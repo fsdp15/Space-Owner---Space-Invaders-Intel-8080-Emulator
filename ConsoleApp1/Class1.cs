@@ -64,6 +64,24 @@ namespace ConsoleApp1
             opDictionary.Add(0x1d, new Operation(0x1d, "DCR     E", 1)); //				E <- E-1
             opDictionary.Add(0x1e, new Operation(0x1e, "MVI     E,D8", 2)); //					E <- byte 2
             opDictionary.Add(0x1f, new Operation(0x1f, "RAR", 1)); //					E <- byte 2
+
+            opDictionary.Add(0x21, new Operation(0x21, "LXI     H,D16", 3)); //	 H <- byte 3, L <- byte 2
+            opDictionary.Add(0x22, new Operation(0x22, "SHLD    adr", 3)); //	 (adr) <-L; (adr+1)<-H
+            opDictionary.Add(0x23, new Operation(0x23, "INX    H", 1)); //	 HL <- HL + 1
+            opDictionary.Add(0x24, new Operation(0x24, "INR    H", 1)); //	 	H <- H+1
+            opDictionary.Add(0x25, new Operation(0x25, "DCR    H", 1)); //	 	H <- H-1
+            opDictionary.Add(0x26, new Operation(0x26, "MVI    H,D8", 2)); //	 	H <- byte 2
+            opDictionary.Add(0x27, new Operation(0x27, "DAA", 1)); //	 	special
+
+            opDictionary.Add(0x29, new Operation(0x29, "DAD    H", 1)); //	 HL = HL + HI
+            opDictionary.Add(0x2a, new Operation(0x2a, "LHLD    adr", 3)); //	 	L <- (adr); H<-(adr+1)
+            opDictionary.Add(0x2b, new Operation(0x2b, "DCX    H", 1)); //	 		HL = HL-1
+            opDictionary.Add(0x2c, new Operation(0x2c, "INR    L", 1)); //	 		L <- L+1
+            opDictionary.Add(0x2d, new Operation(0x2d, "DCR    L", 1)); //	 		L <- L-1
+            opDictionary.Add(0x2e, new Operation(0x2e, "MVI    L,D8", 1)); //	 		L <- byte 2
+            opDictionary.Add(0x2f, new Operation(0x2f, "CMA", 1)); //	A <- !A
+
+
         }
 
 
