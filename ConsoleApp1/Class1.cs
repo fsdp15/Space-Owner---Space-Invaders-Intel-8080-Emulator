@@ -157,8 +157,36 @@ namespace ConsoleApp1
             opDictionary.Add(0x73, new Operation(0x73, "MOV     M,E", 1)); // 			(HL) <- E
             opDictionary.Add(0x74, new Operation(0x74, "MOV     M,H", 1)); // 			(HL) <- H
             opDictionary.Add(0x75, new Operation(0x75, "MOV     M,L", 1)); // 			(HL) <- L
-
             opDictionary.Add(0x76, new Operation(0x76, "HLT", 1)); // 		Halt
+            opDictionary.Add(0x77, new Operation(0x77, "MOV     M,A", 1)); // 		    (HL) <- A
+
+            opDictionary.Add(0x78, new Operation(0x78, "MOV     A,B", 1)); // 				A <- B
+            opDictionary.Add(0x79, new Operation(0x79, "MOV     A,C", 1)); // 				A <- C
+            opDictionary.Add(0x7a, new Operation(0x7a, "MOV     A,D", 1)); // 				A <- D
+            opDictionary.Add(0x7b, new Operation(0x7b, "MOV     A,E", 1)); // 			    A <- E  
+            opDictionary.Add(0x7c, new Operation(0x7c, "MOV     A,H", 1)); // 			    A <- H
+            opDictionary.Add(0x7d, new Operation(0x7d, "MOV     A,L", 1)); // 			    A <- L
+            opDictionary.Add(0x7e, new Operation(0x7e, "MOV     A,M", 1)); // 			    A <- (HL)
+            opDictionary.Add(0x7f, new Operation(0x7f, "MOV     A,A", 1)); // 			    A <- A
+
+
+            opDictionary.Add(0x80, new Operation(0x80, "ADD     B", 1)); // 				A <- A + B
+            opDictionary.Add(0x81, new Operation(0x81, "ADD     C", 1)); // 				A <- A + C
+            opDictionary.Add(0x82, new Operation(0x82, "ADD     D", 1)); // 				A <- A + D
+            opDictionary.Add(0x83, new Operation(0x83, "ADD     E", 1)); // 			    A <- A + E
+            opDictionary.Add(0x84, new Operation(0x84, "ADD     H", 1)); // 			    A <- A + H
+            opDictionary.Add(0x85, new Operation(0x85, "ADD     L", 1)); // 			    A <- A + L
+            opDictionary.Add(0x86, new Operation(0x86, "ADD     M", 1)); // 			    A <- A + (HL)
+            opDictionary.Add(0x87, new Operation(0x87, "ADD     A", 1)); // 			    A <- A + A
+
+            opDictionary.Add(0x88, new Operation(0x88, "ADC     B", 1)); // 				A <- A + B + CY
+            opDictionary.Add(0x89, new Operation(0x89, "ADC     C", 1)); // 				A <- A + C + CY
+            opDictionary.Add(0x8a, new Operation(0x8a, "ADC     D", 1)); // 				A <- A + D + CY
+            opDictionary.Add(0x8b, new Operation(0x8b, "ADC     E", 1)); // 			    A <- A + E + CY
+            opDictionary.Add(0x8c, new Operation(0x8c, "ADC     H", 1)); // 			    A <- A + H + CY
+            opDictionary.Add(0x8d, new Operation(0x8d, "ADC     L", 1)); // 			    A <- A + L + CY
+            opDictionary.Add(0x8e, new Operation(0x8e, "ADC     M", 1)); // 			   	A <- A + (HL) + CY
+            opDictionary.Add(0x8f, new Operation(0x8f, "ADC     A", 1)); // 			    A <- A + A + CY
         }
 
 
