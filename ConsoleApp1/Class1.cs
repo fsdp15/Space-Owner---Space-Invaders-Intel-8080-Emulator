@@ -28,7 +28,7 @@ namespace ConsoleApp1
 
     public class InstructionSet
     {
-        public static Dictionary<Byte, Operation> opDictionary = new Dictionary<byte, Operation>();
+        public static Dictionary<Byte, Operation> opDictionary = new Dictionary<byte, Operation>(); // Nao preciso construir um novo, so ja inicializar um dicionario com valores?
 
         public void populateOpDictionary()
         {
@@ -78,8 +78,16 @@ namespace ConsoleApp1
             opDictionary.Add(0x2b, new Operation(0x2b, "DCX    H", 1)); //	 		HL = HL-1
             opDictionary.Add(0x2c, new Operation(0x2c, "INR    L", 1)); //	 		L <- L+1
             opDictionary.Add(0x2d, new Operation(0x2d, "DCR    L", 1)); //	 		L <- L-1
-            opDictionary.Add(0x2e, new Operation(0x2e, "MVI    L,D8", 1)); //	 		L <- byte 2
+            opDictionary.Add(0x2e, new Operation(0x2e, "MVI    L,D8", 2)); //	 		L <- byte 2
             opDictionary.Add(0x2f, new Operation(0x2f, "CMA", 1)); //	A <- !A
+
+            opDictionary.Add(0x31, new Operation(0x31, "LXI    SP,D16", 3)); // SP.hi < -byte 3, SP.lo < -byte 2
+            opDictionary.Add(0x32, new Operation(0x32, "STA     adr", 3)); // 	(adr) <- A
+            opDictionary.Add(0x33, new Operation(0x33, "INX     SP", 1)); // 		SP = SP + 1
+            opDictionary.Add(0x34, new Operation(0x34, "INR     M", 1)); // 		(HL) <- (HL)+1
+            opDictionary.Add(0x35, new Operation(0x35, "DCR     M", 1)); // 		(HL) <- (HL)-1
+            opDictionary.Add(0x36, new Operation(0x36, "MVI     M,D8", 2)); // 		(HL) <- byte 2
+            opDictionary.Add(0x37, new Operation(0x37, "STC", 1)); // 		CY = 1
 
 
         }
