@@ -13,15 +13,19 @@ namespace Intel8080Emulator
         {
             byte opcode = registers.Memory[registers.Pc];
 
-
             switch (opcode)
             {
                 case 0x00:
-                    throw new UnimplementedInstruction("Instruction is not implemented");
                     break;
+		case 0x01:
+		    registers.B = registers.Memory[registers.Pc+(byte)2];
+		    registers.C = registers.Memory[registers.Pc+(byte)1];
+		    registers.Pc+=(ushort)2;
+		case 0x02:
+
             }
 
-            registers.Pc++;
+            registers.Pc+=(ushort)1;
 
             return 1;
         }
