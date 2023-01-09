@@ -5,7 +5,7 @@ using System.Net.NetworkInformation;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace ConsoleApp1
+namespace Intel8080Emulator
 {
     public class Operation
     {
@@ -35,13 +35,14 @@ namespace ConsoleApp1
             opDictionary.Add(0x00, new Operation(0x00, "NOP", 1));
             opDictionary.Add(0x01, new Operation(0x01, "LXI     B,D16", 3)); // Loads a 16 bit address into the register pair BC
             opDictionary.Add(0x02, new Operation(0x02, "STAX    B", 1));  // Store the value of the accumulator into the register pair BC (the address that they point to)
-            opDictionary.Add(0x03, new Operation(0x03, "INX    B", 1)); // 	BC <- BC+1
-            opDictionary.Add(0x04, new Operation(0x04, "INR    B", 1)); // 	B <- B+1
-            opDictionary.Add(0x05, new Operation(0x05, "DCR    B", 1)); // 	B <- B-1
-            opDictionary.Add(0x06, new Operation(0x06, "MVI    B,D8", 2)); // 	B <- byte 2
+            opDictionary.Add(0x03, new Operation(0x03, "INX     B", 1)); // 	BC <- BC+1
+            opDictionary.Add(0x04, new Operation(0x04, "INR     B", 1)); // 	B <- B+1
+            opDictionary.Add(0x05, new Operation(0x05, "DCR     B", 1)); // 	B <- B-1
+            opDictionary.Add(0x06, new Operation(0x06, "MVI     B,D8", 2)); // 	B <- byte 2
             opDictionary.Add(0x07, new Operation(0x07, "RLC", 1)); // 	A = A << 1; bit 0 = prev bit 7; CY = prev bit 7
+            opDictionary.Add(0x08, new Operation(0x08, "NOP", 1));
 
-            opDictionary.Add(0x09, new Operation(0x09, "DAD    B", 1)); // 	HL = HL + BC
+            opDictionary.Add(0x09, new Operation(0x09, "DAD     B", 1)); // 	HL = HL + BC
             opDictionary.Add(0x0a, new Operation(0x0a, "LDAX    B", 1)); // 		A <- (BC)
             opDictionary.Add(0x0b, new Operation(0x0b, "DCX     B", 1)); // 		BC = BC-1
             opDictionary.Add(0x0c, new Operation(0x0c, "INR     C", 1)); // 		C <- C+1
@@ -49,45 +50,52 @@ namespace ConsoleApp1
             opDictionary.Add(0x0e, new Operation(0x0e, "MVI     C,D8", 2)); // 		C <- byte 2
             opDictionary.Add(0x0f, new Operation(0x0f, "RRC", 1)); // 			A = A >> 1; bit 7 = prev bit 0; CY = prev bit 0
 
+            opDictionary.Add(0x10, new Operation(0x10, "NOP", 1));
             opDictionary.Add(0x11, new Operation(0x11, "LXI     D,D16", 3)); // 		D <- byte 3, E <- byte 2
-            opDictionary.Add(0x12, new Operation(0x12, "STAX     D", 1)); // 		// Store the value of the accumulator into the register pair DE (the address that they point to)
-            opDictionary.Add(0x13, new Operation(0x13, "INX      D", 1)); // DE <- DE + 1
-            opDictionary.Add(0x14, new Operation(0x14, "INR       D", 1)); //	D <- D+1
-            opDictionary.Add(0x15, new Operation(0x15, "DCR       D", 1)); //	D <- D-1
-            opDictionary.Add(0x16, new Operation(0x16, "MVI       D,D8", 2)); //	D <- byte 2
+            opDictionary.Add(0x12, new Operation(0x12, "STAX    D", 1)); // 		// Store the value of the accumulator into the register pair DE (the address that they point to)
+            opDictionary.Add(0x13, new Operation(0x13, "INX     D", 1)); // DE <- DE + 1
+            opDictionary.Add(0x14, new Operation(0x14, "INR     D", 1)); //	D <- D+1
+            opDictionary.Add(0x15, new Operation(0x15, "DCR     D", 1)); //	D <- D-1
+            opDictionary.Add(0x16, new Operation(0x16, "MVI     D,D8", 2)); //	D <- byte 2
             opDictionary.Add(0x17, new Operation(0x17, "RAL", 1)); //		A = A << 1; bit 0 = prev CY; CY = prev bit 7
+            opDictionary.Add(0x18, new Operation(0x18, "NOP", 1));
 
             opDictionary.Add(0x19, new Operation(0x19, "DAD     D", 1)); //		HL = HL + DE
-            opDictionary.Add(0x1a, new Operation(0x1a, "LDAX     D", 1)); //			A <- (DE)
+            opDictionary.Add(0x1a, new Operation(0x1a, "LDAX    D", 1)); //			A <- (DE)
             opDictionary.Add(0x1b, new Operation(0x1b, "DCX     D", 1)); //			DE = DE-1
             opDictionary.Add(0x1c, new Operation(0x1c, "INR     E", 1)); //				E <-E+1
             opDictionary.Add(0x1d, new Operation(0x1d, "DCR     E", 1)); //				E <- E-1
             opDictionary.Add(0x1e, new Operation(0x1e, "MVI     E,D8", 2)); //					E <- byte 2
             opDictionary.Add(0x1f, new Operation(0x1f, "RAR", 1)); //					E <- byte 2
+            opDictionary.Add(0x20, new Operation(0x20, "NOP", 1));
 
             opDictionary.Add(0x21, new Operation(0x21, "LXI     H,D16", 3)); //	 H <- byte 3, L <- byte 2
             opDictionary.Add(0x22, new Operation(0x22, "SHLD    adr", 3)); //	 (adr) <-L; (adr+1)<-H
-            opDictionary.Add(0x23, new Operation(0x23, "INX    H", 1)); //	 HL <- HL + 1
-            opDictionary.Add(0x24, new Operation(0x24, "INR    H", 1)); //	 	H <- H+1
-            opDictionary.Add(0x25, new Operation(0x25, "DCR    H", 1)); //	 	H <- H-1
-            opDictionary.Add(0x26, new Operation(0x26, "MVI    H,D8", 2)); //	 	H <- byte 2
+            opDictionary.Add(0x23, new Operation(0x23, "INX     H", 1)); //	 HL <- HL + 1
+            opDictionary.Add(0x24, new Operation(0x24, "INR     H", 1)); //	 	H <- H+1
+            opDictionary.Add(0x25, new Operation(0x25, "DCR     H", 1)); //	 	H <- H-1
+            opDictionary.Add(0x26, new Operation(0x26, "MVI     H,D8", 2)); //	 	H <- byte 2
             opDictionary.Add(0x27, new Operation(0x27, "DAA", 1)); //	 	special
+            opDictionary.Add(0x28, new Operation(0x28, "NOP", 1));
 
-            opDictionary.Add(0x29, new Operation(0x29, "DAD    H", 1)); //	 HL = HL + HI
+            opDictionary.Add(0x29, new Operation(0x29, "DAD     H", 1)); //	 HL = HL + HI
             opDictionary.Add(0x2a, new Operation(0x2a, "LHLD    adr", 3)); //	 	L <- (adr); H<-(adr+1)
-            opDictionary.Add(0x2b, new Operation(0x2b, "DCX    H", 1)); //	 		HL = HL-1
-            opDictionary.Add(0x2c, new Operation(0x2c, "INR    L", 1)); //	 		L <- L+1
-            opDictionary.Add(0x2d, new Operation(0x2d, "DCR    L", 1)); //	 		L <- L-1
-            opDictionary.Add(0x2e, new Operation(0x2e, "MVI    L,D8", 2)); //	 		L <- byte 2
+            opDictionary.Add(0x2b, new Operation(0x2b, "DCX     H", 1)); //	 		HL = HL-1
+            opDictionary.Add(0x2c, new Operation(0x2c, "INR     L", 1)); //	 		L <- L+1
+            opDictionary.Add(0x2d, new Operation(0x2d, "DCR     L", 1)); //	 		L <- L-1
+            opDictionary.Add(0x2e, new Operation(0x2e, "MVI     L,D8", 2)); //	 		L <- byte 2
             opDictionary.Add(0x2f, new Operation(0x2f, "CMA", 1)); //	A <- !A
+            opDictionary.Add(0x30, new Operation(0x30, "NOP", 1));
 
-            opDictionary.Add(0x31, new Operation(0x31, "LXI    SP,D16", 3)); // SP.hi < -byte 3, SP.lo < -byte 2
+            opDictionary.Add(0x31, new Operation(0x31, "LXI     SP,D16", 3)); // SP.hi < -byte 3, SP.lo < -byte 2
             opDictionary.Add(0x32, new Operation(0x32, "STA     adr", 3)); // 	(adr) <- A
             opDictionary.Add(0x33, new Operation(0x33, "INX     SP", 1)); // 		SP = SP + 1
             opDictionary.Add(0x34, new Operation(0x34, "INR     M", 1)); // 		(HL) <- (HL)+1
             opDictionary.Add(0x35, new Operation(0x35, "DCR     M", 1)); // 		(HL) <- (HL)-1
             opDictionary.Add(0x36, new Operation(0x36, "MVI     M,D8", 2)); // 		(HL) <- byte 2
             opDictionary.Add(0x37, new Operation(0x37, "STC", 1)); // 		CY = 1
+
+            opDictionary.Add(0x38, new Operation(0x38, "NOP", 1));
 
             opDictionary.Add(0x39, new Operation(0x39, "DAP     SP", 1)); // 			HL = HL + SP
             opDictionary.Add(0x3a, new Operation(0x3a, "LDA     adr", 3)); // 			A <- (adr)
@@ -248,7 +256,7 @@ namespace ConsoleApp1
             opDictionary.Add(0xc2, new Operation(0xc2, "JNZ     addr", 3)); // 			    		if NZ, PC <- adr // Usado para IFs
             opDictionary.Add(0xc3, new Operation(0xc3, "JMP     addr", 3)); // 			    		PC <= adr
             opDictionary.Add(0xc4, new Operation(0xc4, "CNZ     addr", 3)); // 			    		if NZ, CALL adr
-            opDictionary.Add(0xc5, new Operation(0xc5, "PUSH     B", 1)); // 			   	(sp-2)<-C; (sp-1)<-B; sp <- sp - 2
+            opDictionary.Add(0xc5, new Operation(0xc5, "PUSH    B", 1)); // 			   	(sp-2)<-C; (sp-1)<-B; sp <- sp - 2
             opDictionary.Add(0xc6, new Operation(0xc6, "ADI     D8", 2)); // 			   A <- A + byte
             opDictionary.Add(0xc7, new Operation(0xc7, "RST     0", 2)); // 			   	CALL $0 -> interrupts
             opDictionary.Add(0xc8, new Operation(0xc8, "RZ", 1)); // 			   	if Z, RET
@@ -256,17 +264,17 @@ namespace ConsoleApp1
             opDictionary.Add(0xca, new Operation(0xca, "JZ      adr", 3)); // 			   	if Z, PC <- adr
 
             opDictionary.Add(0xcc, new Operation(0xcc, "CZ      adr", 3)); // 			    if Z, CALL adr
-            opDictionary.Add(0xcd, new Operation(0xcd, "CALL      adr", 3)); // 			(SP-1)<-PC.hi;(SP-2)<-PC.lo;SP<-SP-2;PC=adr
-            opDictionary.Add(0xce, new Operation(0xce, "ACI      D8", 2)); //               	A <- A + data + CY
+            opDictionary.Add(0xcd, new Operation(0xcd, "CALL    adr", 3)); // 			(SP-1)<-PC.hi;(SP-2)<-PC.lo;SP<-SP-2;PC=adr
+            opDictionary.Add(0xce, new Operation(0xce, "ACI     D8", 2)); //               	A <- A + data + CY
 
-            opDictionary.Add(0xcf, new Operation(0xcf, "RST      1", 1)); //               	CALL $8
+            opDictionary.Add(0xcf, new Operation(0xcf, "RST     1", 1)); //               	CALL $8
 
             opDictionary.Add(0xd0, new Operation(0xd0, "RNC", 1)); //               		if NCY, RET
-            opDictionary.Add(0xd1, new Operation(0xd1, "POP      D", 1)); //               	E <- (sp); D <- (sp+1); sp <- sp+2
-            opDictionary.Add(0xd2, new Operation(0xd2, "JNC      adr", 3)); //              if NCY, PC<-adr
-            opDictionary.Add(0xd3, new Operation(0xd3, "OUT      D8", 2)); //               Output
-            opDictionary.Add(0xd4, new Operation(0xd4, "CNC      adr", 3)); //              if NCY, CALL adr
-            opDictionary.Add(0xd5, new Operation(0xd5, "PUSH     D", 1)); //              	(sp-2)<-E; (sp-1)<-D; sp <- sp - 2
+            opDictionary.Add(0xd1, new Operation(0xd1, "POP     D", 1)); //               	E <- (sp); D <- (sp+1); sp <- sp+2
+            opDictionary.Add(0xd2, new Operation(0xd2, "JNC     adr", 3)); //              if NCY, PC<-adr
+            opDictionary.Add(0xd3, new Operation(0xd3, "OUT     D8", 2)); //               Output
+            opDictionary.Add(0xd4, new Operation(0xd4, "CNC     adr", 3)); //              if NCY, CALL adr
+            opDictionary.Add(0xd5, new Operation(0xd5, "PUSH    D", 1)); //              	(sp-2)<-E; (sp-1)<-D; sp <- sp - 2
             opDictionary.Add(0xd6, new Operation(0xd6, "SUI     D8", 2)); //              	A <- A - data
             opDictionary.Add(0xd7, new Operation(0xd7, "RST     2", 1)); //              	CALL $10
             opDictionary.Add(0xd8, new Operation(0xd8, "RC", 1)); //              	        if CY, RET
@@ -276,17 +284,17 @@ namespace ConsoleApp1
             opDictionary.Add(0xdb, new Operation(0xdb, "IN      D8", 2)); //              	Input
             opDictionary.Add(0xdc, new Operation(0xdb, "CC      adr", 3)); //              	     if CY,CALL adr
 
-            opDictionary.Add(0xde, new Operation(0xde, "SBI      D8", 2)); //              	     A <- A - data - CY
-            opDictionary.Add(0xdf, new Operation(0xdf, "RST      3", 1)); //              	CALL $18
+            opDictionary.Add(0xde, new Operation(0xde, "SBI     D8", 2)); //              	     A <- A - data - CY
+            opDictionary.Add(0xdf, new Operation(0xdf, "RST     3", 1)); //              	CALL $18
             opDictionary.Add(0xe0, new Operation(0xe0, "RPO", 1)); //              		if pair flag is odd, return. PO = Parity ODD
             opDictionary.Add(0xe1, new Operation(0xe1, "POP     H", 1)); //              			L <- (sp); H <- (sp+1); sp <- sp+2
             opDictionary.Add(0xe2, new Operation(0xe2, "JPO     adr", 3)); //              			if PO, PC <- adr
-            opDictionary.Add(0xe3, new Operation(0xe3, "XTHL     adr", 1)); //              				L <-> (SP); H <-> (SP+1) | <-> means exchanged
+            opDictionary.Add(0xe3, new Operation(0xe3, "XTHL    adr", 1)); //              				L <-> (SP); H <-> (SP+1) | <-> means exchanged
 
 
 
             opDictionary.Add(0xe4, new Operation(0xe4, "CPO     adr", 3)); //              			if PO, CALL adr
-            opDictionary.Add(0xe5, new Operation(0xe5, "PUSH     H", 1)); //              				(sp-2)<-L; (sp-1)<-H; sp <- sp - 2
+            opDictionary.Add(0xe5, new Operation(0xe5, "PUSH    H", 1)); //              				(sp-2)<-L; (sp-1)<-H; sp <- sp - 2
             opDictionary.Add(0xe6, new Operation(0xe6, "ANI     D8", 2)); //              					A <- A & data (immediate)
             opDictionary.Add(0xe7, new Operation(0xe7, "RST     4", 1)); //              					CALL $20
             opDictionary.Add(0xe8, new Operation(0xe8, "RPE", 1)); //              						if PE, RET // parity even
@@ -302,17 +310,17 @@ namespace ConsoleApp1
             opDictionary.Add(0xf2, new Operation(0xf2, "JP     adr", 1)); //              		if P=1 PC <- adr
             opDictionary.Add(0xf3, new Operation(0xf3, "DI", 1)); //              		special
             opDictionary.Add(0xf4, new Operation(0xf4, "CP      adr", 1)); //              			if P, PC <- adr
-            opDictionary.Add(0xf5, new Operation(0xf5, "PUSH      PSW", 1)); //              				(sp-2)<-flags; (sp-1)<-A; sp <- sp - 2
-            opDictionary.Add(0xf6, new Operation(0xf6, "ORI      D8", 2)); //              				A <- A | data
-            opDictionary.Add(0xf7, new Operation(0xf7, "RST      6", 1)); //              				CALL $30
+            opDictionary.Add(0xf5, new Operation(0xf5, "PUSH    PSW", 1)); //              				(sp-2)<-flags; (sp-1)<-A; sp <- sp - 2
+            opDictionary.Add(0xf6, new Operation(0xf6, "ORI     D8", 2)); //              				A <- A | data
+            opDictionary.Add(0xf7, new Operation(0xf7, "RST     6", 1)); //              				CALL $30
             opDictionary.Add(0xf8, new Operation(0xf8, "RM", 1)); //              					if M, RET -- Return if Minus. Sign Bit is one
             opDictionary.Add(0xf9, new Operation(0xf9, "SPHL", 1)); //              				SP=HL
             opDictionary.Add(0xfa, new Operation(0xfa, "JM      adr", 3)); //              					if M, PC <- adr
             opDictionary.Add(0xfb, new Operation(0xfb, "EI", 1)); //              				special
             opDictionary.Add(0xfc, new Operation(0xfc, "CM      adr", 3)); //              				if M, CALL adr
 
-            opDictionary.Add(0xfe, new Operation(0xfe, "CPI      D8", 2)); //              					A - data
-            opDictionary.Add(0xff, new Operation(0xff, "RST      7", 1)); //              					CALL $38
+            opDictionary.Add(0xfe, new Operation(0xfe, "CPI     D8", 2)); //              					A - data
+            opDictionary.Add(0xff, new Operation(0xff, "RST     7", 1)); //              					CALL $38
 
         }
 
