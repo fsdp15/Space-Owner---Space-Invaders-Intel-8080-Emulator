@@ -11,7 +11,7 @@ namespace ConsoleApp1
 {
     public class Disassembler
     {
-        InstructionSet instructionSet = new InstructionSet(); // I need to check how to fix this dependency
+        InstructionSet instructionSet = new InstructionSet(); // I need to check how to inject this dependency
         
 
         public void Disassemble8080Op(byte[] codebuffer, ref UInt16 pc, StringBuilder disassembly)
