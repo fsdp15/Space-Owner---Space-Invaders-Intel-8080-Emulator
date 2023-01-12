@@ -18,6 +18,7 @@ namespace Intel8080Emulator
         {
             byte* opcode = &registers.Memory[registers.Pc];
             ushort answer;
+            byte x;
 
             switch (*opcode) // I can implement this with a dictionary that points to a... method? (delegate)
             {
@@ -43,15 +44,16 @@ namespace Intel8080Emulator
                     break;
 
                 case 0x0f: // RRC 	A = A >> 1; bit 7 = prev bit 0; CY = prev bit 0
-                    byte x = registers.A;
-                    registers.A = (byte)((((byte)x & (byte)0xff) << (byte) 0x07) | ((byte) x >> (byte) 0x01));
-                    if ((registers.A > (ushort)0xff)) registers.Flags.Cy = 1; else registers.Flags.Cy = 0; // Carry Flag
+                    x = registers.A;
+                    // X AND 0x01 faz pegar só o bit mais da direita
+                    registers.A = (byte)((((byte)x & (byte)0x01) << (byte) 0x07) | ((byte) x >> (byte) 0x01));
+                    if ((x & 0x01) == 0x01) registers.Flags.Cy = 1; else registers.Flags.Cy = 0; // Carry Flag
                     break;
 
                 case 0x1f: // RAR 	A = A >> 1; bit 7 = prev bit 7; CY = prev bit 0
-                    byte x = registers.A;
-                    registers.A = (byte)((((byte)x & (byte)0xff) << (byte)0x07) | ((byte)x >> (byte)0x01));
-                    if ((registers.A > (ushort)0xff)) registers.Flags.Cy = 1; else registers.Flags.Cy = 0; // Carry Flag
+                    x = registers.A;
+                    registers.A = (byte)((registers.Flags.Cy << 0x07) | (x >> 0x01));
+                    if ((x & 0x01) == 0x01) registers.Flags.Cy = 1; else registers.Flags.Cy = 0; // Carry Flag
                     break;
 
                 case 0x2f: // CMA (not)
@@ -59,7 +61,7 @@ namespace Intel8080Emulator
                     break;
 
                 case 0xe6: // ANI byte
-                    byte x = (byte)(registers.A & opcode[1]);
+                    x = (byte)(registers.A & opcode[1]);
 
                     if (x == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
                     if ((x & (ushort)0x80) >= 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
@@ -130,6 +132,15 @@ namespace Intel8080Emulator
                 case 0xc9:  // RET
                     registers.Pc = (ushort)((ushort)registers.Memory[registers.Sp + 1] << 8 | (ushort)registers.Memory[registers.Sp]);
                     registers.Sp += 2;
+                    break;
+
+                case 0xfe: // CPI byte
+                    x = (byte)(registers.A - opcode[1]);
+                    if (x == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
+                    if ((x & 0x80) == 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
+                    registers.Flags.P = Intel8080Emulator.Parity(x);
+                    if ((registers.A < opcode[1])) registers.Flags.Cy = 1; else registers.Flags.Cy = 0; // Carry Flag
+                    registers.Pc++;
                     break;
 
             }
