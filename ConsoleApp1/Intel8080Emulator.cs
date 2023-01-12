@@ -48,6 +48,12 @@ namespace Intel8080Emulator
                     if ((registers.A > (ushort)0xff)) registers.Flags.Cy = 1; else registers.Flags.Cy = 0; // Carry Flag
                     break;
 
+                case 0x1f: // RAR 	A = A >> 1; bit 7 = prev bit 7; CY = prev bit 0
+                    byte x = registers.A;
+                    registers.A = (byte)((((byte)x & (byte)0xff) << (byte)0x07) | ((byte)x >> (byte)0x01));
+                    if ((registers.A > (ushort)0xff)) registers.Flags.Cy = 1; else registers.Flags.Cy = 0; // Carry Flag
+                    break;
+
                 case 0x2f: // CMA (not)
                     registers.A = (byte)~registers.A;
                     break;
