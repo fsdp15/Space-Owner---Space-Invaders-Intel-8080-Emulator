@@ -2,11 +2,17 @@
 using System.ComponentModel.Design;
 using System.Numerics;
 using System.Text;
+using Intel8080Emulator;
 
 
 
-Disassembler disassembler = new Disassembler();
-disassembler.ReadRom();
+//Disassembler disassembler = new Disassembler();
+//disassembler.ReadRom();
+
+Intel8080Emulator.Intel8080Emulator intel8080Emulator = new();
+intel8080Emulator.ReadRom();
+
+
 
 // See https://aka.ms/new-console-template for more information
 Console.WriteLine("Hello, World!");

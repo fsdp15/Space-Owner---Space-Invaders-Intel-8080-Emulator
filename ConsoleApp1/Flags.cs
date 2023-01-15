@@ -17,11 +17,11 @@ namespace Intel8080Emulator
 
         public Flags()
         {
-            this.Z = 1;
-            this.S = 1;
-            this.P = 1;
-            this.Cy = 1;
-            this.Ac = 1;
+            this.Z = 0;
+            this.S = 0;
+            this.P = 0;
+            this.Cy = 0;
+            this.Ac = 0;
             this.Pad = 3;
         }
 

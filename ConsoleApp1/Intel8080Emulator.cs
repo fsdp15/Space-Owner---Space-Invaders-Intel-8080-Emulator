@@ -79,6 +79,8 @@ namespace Intel8080Emulator
             fixed (byte* opcode = &registers.memory[registers.Pc])
             {
                 ushort answer;
+                ushort offset;
+                ushort ret;
                 byte x;
                 byte psw;
                 UInt32 aux1;
@@ -96,18 +98,16 @@ namespace Intel8080Emulator
                 {
                     case 0x00: // NOP               
                         break;
+
                     case 0x01: // LXI B
                         registers.C = opcode[(byte)1];
                         registers.B = opcode[(byte)2];
                         registers.Pc += (ushort)2;
                         break;
 
-                    /*  case 0x02: // STAX B // Welp, it seems my memory is 8 bit only. Goodbye STAX
-                          registers.memory[registers.B << 8 | registers.C] = registers.A;
-                          break; */
-
-                    case 0x02:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0x02: // STAX B //
+                        registers.memory[((ushort)registers.B) << 8 | (ushort)registers.C] = registers.A;
+                        break;
 
                     case 0x03: // INX B
                         answer = (ushort)(registers.B);
@@ -118,8 +118,11 @@ namespace Intel8080Emulator
                         registers.C = (byte)(answer & (ushort)0xff);
                         break;
 
-                    case 0x04:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0x04: // INR B
+                        registers.B++;
+                        if ((registers.B & 0xff) == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
+                        if ((registers.B & 0x80) >= 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
+                        registers.Flags.P = Intel8080Emulator.Parity(registers.B);
                         break;
 
                     case 0x05: // 	DCR B -- 	B <- B-1
@@ -134,14 +137,16 @@ namespace Intel8080Emulator
                         registers.Pc++;                 
                         break;
 
-                    case 0x07:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0x07: // RLC
+                        x = registers.A;
+                        registers.A = (byte)((x << 0x01) | ((x & 0x80) >> 7));
+                        if ((x & 0x01) == 0x01) registers.Flags.Cy = 1; else registers.Flags.Cy = 0; // Carry Flag
                         break;
 
-                    case 0x08:
+                    case 0x08: // NOP
                         break;
 
-                    case 0x09:
+                    case 0x09: // DAD B
                         aux1 = (UInt32)(((UInt32)registers.H << 8) | ((UInt32)registers.L));
                         aux2 = (UInt32)(((UInt32)registers.B << 8) | ((UInt32)registers.C));
                         aux2 = (UInt32)(aux1 + aux2);
@@ -151,23 +156,34 @@ namespace Intel8080Emulator
                         registers.L = ((byte)((ushort)(aux2 & 0x00ff)));
                         break;
 
-                    case 0x0a:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0x0a: // LDAX B
+                        registers.A = registers.memory[((ushort)registers.B << 8) | (ushort)registers.C];
                         break;
 
-                    case 0x0b:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0x0b: // DCX B 
+                        answer = (ushort)(registers.B);
+                        answer = (ushort)(answer << 8);
+                        answer = (ushort)(answer | (ushort)registers.C);
+                        answer -= (ushort)0x01;
+                        registers.B = (byte)(answer >> 8 | (ushort)0xff);
+                        registers.C = (byte)(answer & (ushort)0xff);
                         break;
 
-                    case 0x0c:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0x0c: // INR C
+                        registers.C++;
+                        if ((registers.C & 0xff) == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
+                        if ((registers.C & 0x80) >= 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
+                        registers.Flags.P = Intel8080Emulator.Parity(registers.C);
                         break;
 
-                    case 0x0d:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0x0d: // DCR C
+                        registers.C--;
+                        if ((registers.C & 0xff) == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
+                        if ((registers.C & 0x80) >= 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
+                        registers.Flags.P = Intel8080Emulator.Parity(registers.C);
                         break;
 
-                    case 0x0e:
+                    case 0x0e: // MVI C,D8
                         registers.C = opcode[1];
                         registers.Pc++;
                         break;
@@ -178,7 +194,7 @@ namespace Intel8080Emulator
                         if ((x & 0x01) == 0x01) registers.Flags.Cy = 1; else registers.Flags.Cy = 0; // Carry Flag
                         break;
 
-                    case 0x10:
+                    case 0x10: // NOP
                         break;
 
                     case 0x11: // 	LXI D,D16 -- D <- byte 3, E <- byte 2
@@ -187,8 +203,8 @@ namespace Intel8080Emulator
                         registers.Pc += 2;
                         break;
 
-                    case 0x12:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0x12: // STAX D
+                        registers.memory[((ushort)registers.D) << 8 | (ushort)registers.E] = registers.A;
                         break;
 
                     case 0x13: // 	INX D -- 	DE <- DE + 1
@@ -197,28 +213,38 @@ namespace Intel8080Emulator
                         registers.D = (byte)((answer & 0xff00) >> 8);
                         registers.E = (byte)((answer & 0x00ff));
                         break;
-
-                    case 0x14:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                         
+                    case 0x14:  // 	INR D
+                        registers.D++;
+                        if ((registers.D & 0xff) == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
+                        if ((registers.D & 0x80) >= 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
+                        registers.Flags.P = Intel8080Emulator.Parity(registers.D);
                         break;
 
-                    case 0x15:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0x15: // DCR D
+                        registers.D--;
+                        if ((registers.D & 0xff) == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
+                        if ((registers.D & 0x80) >= 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
+                        registers.Flags.P = Intel8080Emulator.Parity(registers.D);
                         break;
 
-                    case 0x16:
+                    case 0x16: // MVI D, D8
                         registers.D = opcode[1];
                         registers.Pc++;
                         break;
 
-                    case 0x17:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0x17: // RAL
+                        x = registers.A;
+                        registers.A = (byte)((((byte)x & (byte)0x01) << (byte)0x07) | ((byte)x >> (byte)0x01));
+                        byte prevCarry = registers.Flags.Cy;
+                        registers.Flags.Cy = (byte)((x & 0x80) >> 7);
+                        registers.A = (byte)((x << 1) | (prevCarry));
                         break;
 
-                    case 0x18:
+                    case 0x18: // NOP
                         break;
 
-                    case 0x19:
+                    case 0x19: // DAD D
                         aux1 = (UInt32)(((UInt32)registers.H << 8) | ((UInt32)registers.L));
                         aux2 = (UInt32)(((UInt32)registers.D << 8) | ((UInt32)registers.E));
                         aux2 = (UInt32)(aux1 + aux2);
@@ -232,19 +258,30 @@ namespace Intel8080Emulator
                         registers.A = registers.memory[((ushort)registers.D << 8) | (ushort)registers.E];
                         break;
 
-                    case 0x1b:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0x1b: // DCX D
+                        answer = (ushort)(registers.D);
+                        answer = (ushort)(answer << 8);
+                        answer = (ushort)(answer | (ushort)registers.E);
+                        answer -= (ushort)0x01;
+                        registers.D = (byte)(answer >> 8 | (ushort)0xff);
+                        registers.E = (byte)(answer & (ushort)0xff);
                         break;
 
-                    case 0x1c:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0x1c: // INR E
+                        registers.E++;
+                        if ((registers.E & 0xff) == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
+                        if ((registers.E & 0x80) >= 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
+                        registers.Flags.P = Intel8080Emulator.Parity(registers.E);
                         break;
 
-                    case 0x1d:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0x1d: // DCR E
+                        registers.E--;
+                        if ((registers.E & 0xff) == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
+                        if ((registers.E & 0x80) >= 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
+                        registers.Flags.P = Intel8080Emulator.Parity(registers.E);
                         break;
 
-                    case 0x1e:
+                    case 0x1e: // MVI E,D8
                         registers.E = opcode[1];
                         registers.Pc++;
                         break;
@@ -255,7 +292,7 @@ namespace Intel8080Emulator
                         if ((x & 0x01) == 0x01) registers.Flags.Cy = 1; else registers.Flags.Cy = 0; // Carry Flag
                         break;
 
-                    case 0x20:
+                    case 0x20: //NOP
                         break;
 
                     case 0x21:  // 	LXI H,D16 -- 	H <- byte 3, L <- byte 2
@@ -263,9 +300,11 @@ namespace Intel8080Emulator
                         registers.H = opcode[2];
                         registers.Pc += 2;
                         break;
-
-                    case 0x22:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                         
+                    case 0x22:  // SHLD adr
+                        registers.memory[((ushort)opcode[2] << 8) | (ushort)opcode[1]] = registers.L;
+                        registers.memory[(((ushort)opcode[2] << 8) | (ushort)opcode[1]) + 1] = registers.H;
+                        registers.Pc += 2;
                         break;
 
                     case 0x23: // INX H -- HL <- HL + 1
@@ -275,52 +314,71 @@ namespace Intel8080Emulator
                         registers.L = (byte)((answer & 0x00ff));
                         break;
 
-                    case 0x24:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0x24: // INR H
+                        registers.H++;
+                        if ((registers.H & 0xff) == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
+                        if ((registers.H & 0x80) >= 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
+                        registers.Flags.P = Intel8080Emulator.Parity(registers.H);
                         break;
 
-                    case 0x25:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0x25: // DCR H
+                        registers.H--;
+                        if ((registers.H & 0xff) == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
+                        if ((registers.H & 0x80) >= 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
+                        registers.Flags.P = Intel8080Emulator.Parity(registers.H);
                         break;
 
-                    case 0x26:
+                    case 0x26: // MVI H,D8
                         registers.H = opcode[1];
                         registers.Pc++;
                         break;
 
-                    case 0x27:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0x27:  //DAA
+                        throw new UnimplementedInstruction(opcode[0].ToString("X2")); // I don't event understand what this instruction does
                         break;
 
-                    case 0x28:
+                    case 0x28: // NOP
                         break;
 
                     case 0x29: //DAD H -> HL = HL + HL
                         aux1 = (UInt32)(((UInt32)registers.H << 8) | ((UInt32)registers.L)); // 32 bits variable to hold carry flag
-                        aux2 = ((UInt32) aux1) << 1;
+                        aux2 = ((UInt32) aux1) << 1; // Adding HL to HL has the same effect of << 1
                         if ((aux2 > (UInt32)0xffff)) registers.Flags.Cy = 1; else registers.Flags.Cy = 0; // Carry Flag
                         aux2 = (ushort)(aux2 & (ushort)0xffff); // Returning to 16 bits
                         registers.H = ((byte)((ushort)(aux2 & 0xff00) >> 8));
                         registers.L = ((byte)((ushort)(aux2 & 0x00ff)));
                         break;
 
-                    case 0x2a:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0x2a: //	LHLD adr
+                        registers.L = registers.memory[((ushort)opcode[2] << 8) | (ushort)opcode[1]];
+                        registers.H = registers.memory[(((ushort)opcode[2] << 8) | (ushort)opcode[1]) + 1];
+                        registers.Pc += 2;
                         break;
 
-                    case 0x2b:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0x2b: // DCX H
+                        answer = (ushort)(registers.H);
+                        answer = (ushort)(answer << 8);
+                        answer = (ushort)(answer | (ushort)registers.L);
+                        answer -= (ushort)0x01;
+                        registers.H = (byte)(answer >> 8 | (ushort)0xff);
+                        registers.L = (byte)(answer & (ushort)0xff);
                         break;
 
-                    case 0x2c:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0x2c: // INR L
+                        registers.L++;
+                        if ((registers.L & 0xff) == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
+                        if ((registers.L & 0x80) >= 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
+                        registers.Flags.P = Intel8080Emulator.Parity(registers.L);
                         break;
 
-                    case 0x2d:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0x2d:  // DCR L
+                        registers.L--;
+                        if ((registers.L & 0xff) == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
+                        if ((registers.L & 0x80) >= 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
+                        registers.Flags.P = Intel8080Emulator.Parity(registers.L);
                         break;
 
-                    case 0x2e:
+                    case 0x2e:  // MVI L, D8
                         registers.L = opcode[1];
                         registers.Pc++;
                         break;
@@ -329,7 +387,7 @@ namespace Intel8080Emulator
                         registers.A = (byte)~registers.A;
                         break;
 
-                    case 0x30:
+                    case 0x30: // NOP
                         break;
 
                     case 0x31: // 	LXI SP, D16 //	SP.hi <- byte 3, SP.lo <- byte 2
@@ -338,20 +396,27 @@ namespace Intel8080Emulator
                         registers.Pc += (ushort)2;
                         break;
 
-                    case 0x32:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0x32: // STA Adr
+                        registers.memory[((ushort)opcode[2] << 8) | (ushort)opcode[1]] = registers.A;
+                        registers.Pc += 2;
                         break;
 
-                    case 0x33:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0x33: // 	INX SP
+                        registers.Sp++;
                         break;
 
-                    case 0x34:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0x34: // INR M
+                        registers.memory[((ushort)registers.H << 8) | (ushort)registers.L]++;
+                        if ((registers.memory[((ushort)registers.H << 8) | (ushort)registers.L] & 0xff) == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
+                        if ((registers.memory[((ushort)registers.H << 8) | (ushort)registers.L] & 0x80) >= 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
+                        registers.Flags.P = Intel8080Emulator.Parity(registers.memory[((ushort)registers.H << 8) | (ushort)registers.L]);
                         break;
 
-                    case 0x35:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0x35: // DCR M
+                        registers.L--;
+                        if ((registers.L & 0xff) == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
+                        if ((registers.L & 0x80) >= 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
+                        registers.Flags.P = Intel8080Emulator.Parity(registers.L);
                         break;
 
                     case 0x36: // 	MVI M,D8 -- (HL) <- byte 2
@@ -359,22 +424,14 @@ namespace Intel8080Emulator
                         registers.Pc++;
                         break;
 
-                    case 0x37:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0x37: // STC
+                        registers.Flags.Cy = 1;
                         break;
 
-                    case 0x38:
+                    case 0x38: // NOP
                         break;
 
-                    case 0x39:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
-                        break;
-
-                    case 0x3a:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
-                        break;
-
-                    case 0x3b:
+                    case 0x39: // DAD SP
                         aux1 = (UInt32)(((UInt32)registers.H << 8) | ((UInt32)registers.L));
                         aux2 = (UInt32)(aux1 + (UInt32)registers.Sp);
                         if ((aux2 > (UInt32)0xffff)) registers.Flags.Cy = 1; else registers.Flags.Cy = 0; // Carry Flag
@@ -383,24 +440,39 @@ namespace Intel8080Emulator
                         registers.L = ((byte)((ushort)(aux2 & 0x00ff)));
                         break;
 
-                    case 0x3c:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0x3a: // LDA adr
+                        registers.A = registers.memory[((ushort)opcode[2] << 8) | (ushort)opcode[1]];
+                        registers.Pc += 2;
                         break;
 
-                    case 0x3d:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0x3b: // DCX SP
+                        registers.Sp--;
                         break;
 
-                    case 0x3e:
+                    case 0x3c: // INR A
+                        registers.A++;
+                        if ((registers.A & 0xff) == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
+                        if ((registers.A & 0x80) >= 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
+                        registers.Flags.P = Intel8080Emulator.Parity(registers.A);
+                        break;
+
+                    case 0x3d: // DCR A
+                        registers.A--;
+                        if ((registers.A & 0xff) == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
+                        if ((registers.A & 0x80) >= 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
+                        registers.Flags.P = Intel8080Emulator.Parity(registers.A);
+                        break;
+
+                    case 0x3e: // MVI A,D8
                         registers.A = opcode[1];
                         registers.Pc++;
                         break;
 
-                    case 0x3f:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0x3f: // CMC
+                        registers.Flags.Cy = (byte)~registers.Flags.Cy;
                         break;
 
-                    case 0x40:
+                    case 0x40: 
                         registers.B = registers.B;
                         break;
 
@@ -616,7 +688,7 @@ namespace Intel8080Emulator
                         registers.memory[((ushort)registers.H << 8) | (ushort)registers.L] = registers.L;
                         break;
 
-                    case 0x76: //HALT
+                    case 0x76: // HALT AND CATCH FIRE
                         return -1;
 
                     case 0x77: // MOV M,A
@@ -664,28 +736,53 @@ namespace Intel8080Emulator
                         registers.A = (byte)(answer & (ushort)0xff); // Returning to 8 bits
                         break;
 
-                    case 0x81:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0x81: // ADD C
+                        answer = (ushort)((ushort)registers.A + (ushort)registers.C); // Higher precision to capture carry out
+                        if ((answer & (ushort)0xff) == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
+                        if ((answer & (ushort)0x80) >= 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
+                        if ((answer > (ushort)0xff)) registers.Flags.Cy = 1; else registers.Flags.Cy = 0; // Carry Flag
+                        registers.Flags.P = Intel8080Emulator.Parity(answer);
+                        registers.A = (byte)(answer & (ushort)0xff); // Returning to 8 bits
                         break;
 
-                    case 0x82:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0x82: // ADD D
+                        answer = (ushort)((ushort)registers.A + (ushort)registers.D); // Higher precision to capture carry out
+                        if ((answer & (ushort)0xff) == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
+                        if ((answer & (ushort)0x80) >= 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
+                        if ((answer > (ushort)0xff)) registers.Flags.Cy = 1; else registers.Flags.Cy = 0; // Carry Flag
+                        registers.Flags.P = Intel8080Emulator.Parity(answer);
+                        registers.A = (byte)(answer & (ushort)0xff); // Returning to 8 bits
+                        break; 
+
+                    case 0x83: // ADD E
+                        answer = (ushort)((ushort)registers.A + (ushort)registers.E); // Higher precision to capture carry out
+                        if ((answer & (ushort)0xff) == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
+                        if ((answer & (ushort)0x80) >= 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
+                        if ((answer > (ushort)0xff)) registers.Flags.Cy = 1; else registers.Flags.Cy = 0; // Carry Flag
+                        registers.Flags.P = Intel8080Emulator.Parity(answer);
+                        registers.A = (byte)(answer & (ushort)0xff); // Returning to 8 bits
                         break;
 
-                    case 0x83:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0x84: // ADD H
+                        answer = (ushort)((ushort)registers.A + (ushort)registers.H); // Higher precision to capture carry out
+                        if ((answer & (ushort)0xff) == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
+                        if ((answer & (ushort)0x80) >= 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
+                        if ((answer > (ushort)0xff)) registers.Flags.Cy = 1; else registers.Flags.Cy = 0; // Carry Flag
+                        registers.Flags.P = Intel8080Emulator.Parity(answer);
+                        registers.A = (byte)(answer & (ushort)0xff); // Returning to 8 bits
                         break;
 
-                    case 0x84:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
-                        break;
-
-                    case 0x85:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0x85: // ADD L
+                        answer = (ushort)((ushort)registers.A + (ushort)registers.L); // Higher precision to capture carry out
+                        if ((answer & (ushort)0xff) == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
+                        if ((answer & (ushort)0x80) >= 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
+                        if ((answer > (ushort)0xff)) registers.Flags.Cy = 1; else registers.Flags.Cy = 0; // Carry Flag
+                        registers.Flags.P = Intel8080Emulator.Parity(answer);
+                        registers.A = (byte)(answer & (ushort)0xff); // Returning to 8 bits
                         break;
 
                     case 0x86: // ADD M -> | A <- A + (HL)
-                        ushort offset = (ushort)((ushort)(registers.H << 8) | (ushort)registers.L);
+                        offset = (ushort)((ushort)(registers.H << 8) | (ushort)registers.L);
                         answer = (ushort)((ushort)registers.A + (ushort)registers.memory[offset]); // Higher precision to capture carry out
                         if ((answer & (ushort)0xff) == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
                         if ((answer & (ushort)0x80) >= 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
@@ -695,7 +792,12 @@ namespace Intel8080Emulator
                         break;
 
                     case 0x87:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                        answer = (ushort)((ushort)registers.A + (ushort)registers.A); // Higher precision to capture carry out
+                        if ((answer & (ushort)0xff) == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
+                        if ((answer & (ushort)0x80) >= 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
+                        if ((answer > (ushort)0xff)) registers.Flags.Cy = 1; else registers.Flags.Cy = 0; // Carry Flag
+                        registers.Flags.P = Intel8080Emulator.Parity(answer);
+                        registers.A = (byte)(answer & (ushort)0xff); // Returning to 8 bits
                         break;
 
                     case 0x88: // ADC B | A <- A + B + CY
@@ -708,228 +810,484 @@ namespace Intel8080Emulator
                         break;
 
                     case 0x89:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                        answer = (ushort)((ushort)registers.A + (ushort)registers.C + (ushort)registers.Flags.Cy); // Higher precision to capture carry out
+                        if ((answer & (ushort)0xff) == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
+                        if ((answer & (ushort)0x80) >= 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
+                        if ((answer > (ushort)0xff)) registers.Flags.Cy = 1; else registers.Flags.Cy = 0; // Carry Flag
+                        registers.Flags.P = Intel8080Emulator.Parity(answer);
+                        registers.A = (byte)(answer & (ushort)0xff); // Returning to 8 bits
                         break;
 
-
                     case 0x8a:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                        answer = (ushort)((ushort)registers.A + (ushort)registers.D + (ushort)registers.Flags.Cy); // Higher precision to capture carry out
+                        if ((answer & (ushort)0xff) == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
+                        if ((answer & (ushort)0x80) >= 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
+                        if ((answer > (ushort)0xff)) registers.Flags.Cy = 1; else registers.Flags.Cy = 0; // Carry Flag
+                        registers.Flags.P = Intel8080Emulator.Parity(answer);
+                        registers.A = (byte)(answer & (ushort)0xff); // Returning to 8 bits
                         break;
 
                     case 0x8b:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                        answer = (ushort)((ushort)registers.A + (ushort)registers.E + (ushort)registers.Flags.Cy); // Higher precision to capture carry out
+                        if ((answer & (ushort)0xff) == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
+                        if ((answer & (ushort)0x80) >= 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
+                        if ((answer > (ushort)0xff)) registers.Flags.Cy = 1; else registers.Flags.Cy = 0; // Carry Flag
+                        registers.Flags.P = Intel8080Emulator.Parity(answer);
+                        registers.A = (byte)(answer & (ushort)0xff); // Returning to 8 bits
                         break;
 
                     case 0x8c:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                        answer = (ushort)((ushort)registers.A + (ushort)registers.H + (ushort)registers.Flags.Cy); // Higher precision to capture carry out
+                        if ((answer & (ushort)0xff) == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
+                        if ((answer & (ushort)0x80) >= 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
+                        if ((answer > (ushort)0xff)) registers.Flags.Cy = 1; else registers.Flags.Cy = 0; // Carry Flag
+                        registers.Flags.P = Intel8080Emulator.Parity(answer);
+                        registers.A = (byte)(answer & (ushort)0xff); // Returning to 8 bits
                         break;
 
                     case 0x8d:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                        answer = (ushort)((ushort)registers.A + (ushort)registers.L + (ushort)registers.Flags.Cy); // Higher precision to capture carry out
+                        if ((answer & (ushort)0xff) == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
+                        if ((answer & (ushort)0x80) >= 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
+                        if ((answer > (ushort)0xff)) registers.Flags.Cy = 1; else registers.Flags.Cy = 0; // Carry Flag
+                        registers.Flags.P = Intel8080Emulator.Parity(answer);
+                        registers.A = (byte)(answer & (ushort)0xff); // Returning to 8 bits
                         break;
 
                     case 0x8e:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                        offset = (ushort)((ushort)(registers.H << 8) | (ushort)registers.L);
+                        answer = (ushort)((ushort)registers.A + (ushort)registers.memory[offset] + (ushort)registers.Flags.Cy); // Higher precision to capture carry out
+                        if ((answer & (ushort)0xff) == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
+                        if ((answer & (ushort)0x80) >= 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
+                        if ((answer > (ushort)0xff)) registers.Flags.Cy = 1; else registers.Flags.Cy = 0; // Carry Flag
+                        registers.Flags.P = Intel8080Emulator.Parity(answer);
+                        registers.A = (byte)(answer & (ushort)0xff); // Returning to 8 bits
+                        break;
                         break;
 
                     case 0x8f:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                        answer = (ushort)((ushort)registers.A + (ushort)registers.A + (ushort)registers.Flags.Cy); // Higher precision to capture carry out
+                        if ((answer & (ushort)0xff) == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
+                        if ((answer & (ushort)0x80) >= 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
+                        if ((answer > (ushort)0xff)) registers.Flags.Cy = 1; else registers.Flags.Cy = 0; // Carry Flag
+                        registers.Flags.P = Intel8080Emulator.Parity(answer);
+                        registers.A = (byte)(answer & (ushort)0xff); // Returning to 8 bits
                         break;
 
-                    case 0x90:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0x90: // SUB B
+                        answer = (ushort)((ushort)registers.A - (ushort)registers.B); // Higher precision to capture carry out
+                        if ((answer & (ushort)0xff) == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
+                        if ((answer & (ushort)0x80) >= 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
+                        if ((answer > (ushort)0xff)) registers.Flags.Cy = 1; else registers.Flags.Cy = 0; // Carry Flag
+                        registers.Flags.P = Intel8080Emulator.Parity(answer);
+                        registers.A = (byte)(answer & (ushort)0xff); // Returning to 8 bits
                         break;
 
                     case 0x91:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                        answer = (ushort)((ushort)registers.A - (ushort)registers.C); // Higher precision to capture carry out
+                        if ((answer & (ushort)0xff) == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
+                        if ((answer & (ushort)0x80) >= 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
+                        if ((answer > (ushort)0xff)) registers.Flags.Cy = 1; else registers.Flags.Cy = 0; // Carry Flag
+                        registers.Flags.P = Intel8080Emulator.Parity(answer);
+                        registers.A = (byte)(answer & (ushort)0xff); // Returning to 8 bits
                         break;
 
                     case 0x92:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                        answer = (ushort)((ushort)registers.A - (ushort)registers.D); // Higher precision to capture carry out
+                        if ((answer & (ushort)0xff) == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
+                        if ((answer & (ushort)0x80) >= 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
+                        if ((answer > (ushort)0xff)) registers.Flags.Cy = 1; else registers.Flags.Cy = 0; // Carry Flag
+                        registers.Flags.P = Intel8080Emulator.Parity(answer);
+                        registers.A = (byte)(answer & (ushort)0xff); // Returning to 8 bits
                         break;
 
                     case 0x93:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                        answer = (ushort)((ushort)registers.A - (ushort)registers.E); // Higher precision to capture carry out
+                        if ((answer & (ushort)0xff) == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
+                        if ((answer & (ushort)0x80) >= 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
+                        if ((answer > (ushort)0xff)) registers.Flags.Cy = 1; else registers.Flags.Cy = 0; // Carry Flag
+                        registers.Flags.P = Intel8080Emulator.Parity(answer);
+                        registers.A = (byte)(answer & (ushort)0xff); // Returning to 8 bits
                         break;
 
                     case 0x94:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                        answer = (ushort)((ushort)registers.A - (ushort)registers.H); // Higher precision to capture carry out
+                        if ((answer & (ushort)0xff) == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
+                        if ((answer & (ushort)0x80) >= 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
+                        if ((answer > (ushort)0xff)) registers.Flags.Cy = 1; else registers.Flags.Cy = 0; // Carry Flag
+                        registers.Flags.P = Intel8080Emulator.Parity(answer);
+                        registers.A = (byte)(answer & (ushort)0xff); // Returning to 8 bits
                         break;
 
                     case 0x95:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                        answer = (ushort)((ushort)registers.A - (ushort)registers.L); // Higher precision to capture carry out
+                        if ((answer & (ushort)0xff) == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
+                        if ((answer & (ushort)0x80) >= 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
+                        if ((answer > (ushort)0xff)) registers.Flags.Cy = 1; else registers.Flags.Cy = 0; // Carry Flag
+                        registers.Flags.P = Intel8080Emulator.Parity(answer);
+                        registers.A = (byte)(answer & (ushort)0xff); // Returning to 8 bits
                         break;
 
-                    case 0x96: //HALT
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0x96:
+                        offset = (ushort)((ushort)(registers.H << 8) | (ushort)registers.L);
+                        answer = (ushort)((ushort)registers.A - (ushort)registers.memory[offset]); // Higher precision to capture carry out
+                        if ((answer & (ushort)0xff) == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
+                        if ((answer & (ushort)0x80) >= 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
+                        if ((answer > (ushort)0xff)) registers.Flags.Cy = 1; else registers.Flags.Cy = 0; // Carry Flag
+                        registers.Flags.P = Intel8080Emulator.Parity(answer);
+                        registers.A = (byte)(answer & (ushort)0xff); // Returning to 8 bits
                         break;
 
                     case 0x97:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                        answer = (ushort)((ushort)registers.A - (ushort)registers.A); // Higher precision to capture carry out
+                        if ((answer & (ushort)0xff) == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
+                        if ((answer & (ushort)0x80) >= 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
+                        if ((answer > (ushort)0xff)) registers.Flags.Cy = 1; else registers.Flags.Cy = 0; // Carry Flag
+                        registers.Flags.P = Intel8080Emulator.Parity(answer);
+                        registers.A = (byte)(answer & (ushort)0xff); // Returning to 8 bits
                         break;
 
-                    case 0x98:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0x98: // SBB B
+                        answer = (ushort)((ushort)registers.A - (ushort)registers.B - (ushort)registers.Flags.Cy); // Higher precision to capture carry out
+                        if ((answer & (ushort)0xff) == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
+                        if ((answer & (ushort)0x80) >= 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
+                        if ((answer > (ushort)0xff)) registers.Flags.Cy = 1; else registers.Flags.Cy = 0; // Carry Flag
+                        registers.Flags.P = Intel8080Emulator.Parity(answer);
+                        registers.A = (byte)(answer & (ushort)0xff); // Returning to 8 bits
                         break;
 
                     case 0x99:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                        answer = (ushort)((ushort)registers.A - (ushort)registers.C - (ushort)registers.Flags.Cy); // Higher precision to capture carry out
+                        if ((answer & (ushort)0xff) == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
+                        if ((answer & (ushort)0x80) >= 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
+                        if ((answer > (ushort)0xff)) registers.Flags.Cy = 1; else registers.Flags.Cy = 0; // Carry Flag
+                        registers.Flags.P = Intel8080Emulator.Parity(answer);
+                        registers.A = (byte)(answer & (ushort)0xff); // Returning to 8 bits
                         break;
 
                     case 0x9a:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                        answer = (ushort)((ushort)registers.A - (ushort)registers.D - (ushort)registers.Flags.Cy); // Higher precision to capture carry out
+                        if ((answer & (ushort)0xff) == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
+                        if ((answer & (ushort)0x80) >= 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
+                        if ((answer > (ushort)0xff)) registers.Flags.Cy = 1; else registers.Flags.Cy = 0; // Carry Flag
+                        registers.Flags.P = Intel8080Emulator.Parity(answer);
+                        registers.A = (byte)(answer & (ushort)0xff); // Returning to 8 bits
                         break;
 
                     case 0x9b:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                        answer = (ushort)((ushort)registers.A - (ushort)registers.E - (ushort)registers.Flags.Cy); // Higher precision to capture carry out
+                        if ((answer & (ushort)0xff) == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
+                        if ((answer & (ushort)0x80) >= 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
+                        if ((answer > (ushort)0xff)) registers.Flags.Cy = 1; else registers.Flags.Cy = 0; // Carry Flag
+                        registers.Flags.P = Intel8080Emulator.Parity(answer);
+                        registers.A = (byte)(answer & (ushort)0xff); // Returning to 8 bits
                         break;
 
                     case 0x9c:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                        answer = (ushort)((ushort)registers.A - (ushort)registers.H - (ushort)registers.Flags.Cy); // Higher precision to capture carry out
+                        if ((answer & (ushort)0xff) == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
+                        if ((answer & (ushort)0x80) >= 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
+                        if ((answer > (ushort)0xff)) registers.Flags.Cy = 1; else registers.Flags.Cy = 0; // Carry Flag
+                        registers.Flags.P = Intel8080Emulator.Parity(answer);
+                        registers.A = (byte)(answer & (ushort)0xff); // Returning to 8 bits
                         break;
 
                     case 0x9d:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                        answer = (ushort)((ushort)registers.A - (ushort)registers.L - (ushort)registers.Flags.Cy); // Higher precision to capture carry out
+                        if ((answer & (ushort)0xff) == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
+                        if ((answer & (ushort)0x80) >= 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
+                        if ((answer > (ushort)0xff)) registers.Flags.Cy = 1; else registers.Flags.Cy = 0; // Carry Flag
+                        registers.Flags.P = Intel8080Emulator.Parity(answer);
+                        registers.A = (byte)(answer & (ushort)0xff); // Returning to 8 bits
                         break;
 
                     case 0x9e:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                        offset = (ushort)((ushort)(registers.H << 8) | (ushort)registers.L);
+                        answer = (ushort)((ushort)registers.A - (ushort)registers.memory[offset] - (ushort)registers.Flags.Cy); // Higher precision to capture carry out
+                        if ((answer & (ushort)0xff) == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
+                        if ((answer & (ushort)0x80) >= 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
+                        if ((answer > (ushort)0xff)) registers.Flags.Cy = 1; else registers.Flags.Cy = 0; // Carry Flag
+                        registers.Flags.P = Intel8080Emulator.Parity(answer);
+                        registers.A = (byte)(answer & (ushort)0xff); // Returning to 8 bits
                         break;
 
                     case 0x9f:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                        answer = (ushort)((ushort)registers.A - (ushort)registers.A - (ushort)registers.Flags.Cy); // Higher precision to capture carry out
+                        if ((answer & (ushort)0xff) == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
+                        if ((answer & (ushort)0x80) >= 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
+                        if ((answer > (ushort)0xff)) registers.Flags.Cy = 1; else registers.Flags.Cy = 0; // Carry Flag
+                        registers.Flags.P = Intel8080Emulator.Parity(answer);
+                        registers.A = (byte)(answer & (ushort)0xff); // Returning to 8 bits
                         break;
 
-                    case 0xa0:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0xa0: // ANA B
+                        registers.A = (byte)(registers.A & registers.B);
+                        if ((registers.A & (ushort)0xff) == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
+                        registers.Flags.P = Intel8080Emulator.Parity(registers.A);
+                        registers.Flags.Cy = 0;
+                        if ((registers.A & (ushort)0x80) >= 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
                         break;
 
-                    case 0xa1:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0xa1: // ANA C
+                        registers.A = (byte)(registers.A & registers.C);
+                        if ((registers.A & (ushort)0xff) == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
+                        registers.Flags.P = Intel8080Emulator.Parity(registers.A);
+                        registers.Flags.Cy = 0;
+                        if ((registers.A & (ushort)0x80) >= 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
                         break;
 
-                    case 0xa2:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0xa2: // ANA D
+                        registers.A = (byte)(registers.A & registers.D);
+                        if ((registers.A & (ushort)0xff) == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
+                        registers.Flags.P = Intel8080Emulator.Parity(registers.A);
+                        registers.Flags.Cy = 0;
+                        if ((registers.A & (ushort)0x80) >= 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
                         break;
 
-                    case 0xa3:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0xa3: // ANA E
+                        registers.A = (byte)(registers.A & registers.E);
+                        if ((registers.A & (ushort)0xff) == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
+                        registers.Flags.P = Intel8080Emulator.Parity(registers.A);
+                        registers.Flags.Cy = 0;
+                        if ((registers.A & (ushort)0x80) >= 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
                         break;
 
-                    case 0xa4:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0xa4: // ANA H
+                        registers.A = (byte)(registers.A & registers.H);
+                        if ((registers.A & (ushort)0xff) == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
+                        registers.Flags.P = Intel8080Emulator.Parity(registers.A);
+                        registers.Flags.Cy = 0;
+                        if ((registers.A & (ushort)0x80) >= 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
                         break;
 
-                    case 0xa5:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0xa5: // ANA L
+                        registers.A = (byte)(registers.A & registers.L);
+                        if ((registers.A & (ushort)0xff) == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
+                        registers.Flags.P = Intel8080Emulator.Parity(registers.A);
+                        registers.Flags.Cy = 0;
+                        if ((registers.A & (ushort)0x80) >= 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
                         break;
 
-                    case 0xa6: //HALT
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0xa6: // ANA (HL)
+                        registers.A = (byte)(registers.A & (registers.memory[((ushort)registers.H << 8) | (ushort)registers.L]));
+                        if ((registers.A & (ushort)0xff) == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
+                        registers.Flags.P = Intel8080Emulator.Parity(registers.A);
+                        registers.Flags.Cy = 0;
+                        if ((registers.A & (ushort)0x80) >= 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
                         break;
 
-                    case 0xa7:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0xa7: // ANA A
+                        if ((registers.A & (ushort)0xff) == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
+                        registers.Flags.P = Intel8080Emulator.Parity(registers.A);
+                        registers.Flags.Cy = 0;
+                        if ((registers.A & (ushort)0x80) >= 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
                         break;
 
-                    case 0xa8:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0xa8: // XRA B
+                        registers.A = (byte)(registers.A ^ registers.B);
+                        if ((registers.A & (ushort)0xff) == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
+                        registers.Flags.P = Intel8080Emulator.Parity(registers.A);
+                        registers.Flags.Cy = 0;
+                        if ((registers.A & (ushort)0x80) >= 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
                         break;
 
-                    case 0xa9:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0xa9: // XRA C
+                        registers.A = (byte)(registers.A ^ registers.C);
+                        if ((registers.A & (ushort)0xff) == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
+                        registers.Flags.P = Intel8080Emulator.Parity(registers.A);
+                        registers.Flags.Cy = 0;
+                        if ((registers.A & (ushort)0x80) >= 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
                         break;
 
-                    case 0xaa:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0xaa: // XRA D
+                        registers.A = (byte)(registers.A ^ registers.D);
+                        if ((registers.A & (ushort)0xff) == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
+                        registers.Flags.P = Intel8080Emulator.Parity(registers.A);
+                        registers.Flags.Cy = 0;
+                        if ((registers.A & (ushort)0x80) >= 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
                         break;
 
-                    case 0xab:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0xab: // XRA E
+                        registers.A = (byte)(registers.A ^ registers.E);
+                        if ((registers.A & (ushort)0xff) == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
+                        registers.Flags.P = Intel8080Emulator.Parity(registers.A);
+                        registers.Flags.Cy = 0;
+                        if ((registers.A & (ushort)0x80) >= 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
                         break;
 
-                    case 0xac:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0xac: // XRA H
+                        registers.A = (byte)(registers.A ^ registers.H);
+                        if ((registers.A & (ushort)0xff) == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
+                        registers.Flags.P = Intel8080Emulator.Parity(registers.A);
+                        registers.Flags.Cy = 0;
+                        if ((registers.A & (ushort)0x80) >= 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
                         break;
 
-                    case 0xad:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0xad: // XRA L
+                        registers.A = (byte)(registers.A ^ registers.L);
+                        if ((registers.A & (ushort)0xff) == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
+                        registers.Flags.P = Intel8080Emulator.Parity(registers.A);
+                        registers.Flags.Cy = 0;
+                        if ((registers.A & (ushort)0x80) >= 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
                         break;
 
-                    case 0xae:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0xae: // XRA M (HL)
+                        registers.A = (byte)(registers.A ^ (registers.memory[((ushort)registers.H << 8) | (ushort)registers.L]));                   
+                        if ((registers.A & (ushort)0xff) == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
+                        registers.Flags.P = Intel8080Emulator.Parity(registers.A);
+                        registers.Flags.Cy = 0;
+                        if ((registers.A & (ushort)0x80) >= 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
                         break;
 
-                    case 0xaf:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0xaf: // XOR A (accumulator) -> zero the accumulator
+                        registers.A = 0;
+                        registers.Flags.Z = 1;
+                        registers.Flags.S = 0;
+                        registers.Flags.P = 0;
+                        registers.Flags.Cy = 0;
                         break;
 
-                    case 0xb0:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0xb0: // ORA B 
+                        registers.A = (byte)(registers.A | registers.B);
+                        if ((registers.A & (ushort)0xff) == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
+                        registers.Flags.P = Intel8080Emulator.Parity(registers.A);
+                        registers.Flags.Cy = 0;
+                        if ((registers.A & (ushort)0x80) >= 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
                         break;
 
-                    case 0xb1:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0xb1: // ORA C
+                        registers.A = (byte)(registers.A | registers.C);
+                        if ((registers.A & (ushort)0xff) == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
+                        registers.Flags.P = Intel8080Emulator.Parity(registers.A);
+                        registers.Flags.Cy = 0;
+                        if ((registers.A & (ushort)0x80) >= 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
                         break;
 
-                    case 0xb2:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0xb2: // ORA D
+                        registers.A = (byte)(registers.A | registers.D);
+                        if ((registers.A & (ushort)0xff) == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
+                        registers.Flags.P = Intel8080Emulator.Parity(registers.A);
+                        registers.Flags.Cy = 0;
+                        if ((registers.A & (ushort)0x80) >= 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
                         break;
 
-                    case 0xb3:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0xb3: // ORA E
+                        registers.A = (byte)(registers.A | registers.E);
+                        if ((registers.A & (ushort)0xff) == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
+                        registers.Flags.P = Intel8080Emulator.Parity(registers.A);
+                        registers.Flags.Cy = 0;
+                        if ((registers.A & (ushort)0x80) >= 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
                         break;
 
-                    case 0xb4:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0xb4: // ORA H
+                        registers.A = (byte)(registers.A | registers.H);
+                        if ((registers.A & (ushort)0xff) == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
+                        registers.Flags.P = Intel8080Emulator.Parity(registers.A);
+                        registers.Flags.Cy = 0;
+                        if ((registers.A & (ushort)0x80) >= 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
                         break;
 
-                    case 0xb5:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0xb5: // ORA L
+                        registers.A = (byte)(registers.A | registers.L);
+                        if ((registers.A & (ushort)0xff) == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
+                        registers.Flags.P = Intel8080Emulator.Parity(registers.A);
+                        registers.Flags.Cy = 0;
+                        if ((registers.A & (ushort)0x80) >= 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
                         break;
 
-                    case 0xb6: //HALT
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0xb6: // ORA M
+                        registers.A = (byte)(registers.A | (registers.memory[((ushort)registers.H << 8) | (ushort)registers.L]));
+                        if ((registers.A & (ushort)0xff) == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
+                        registers.Flags.P = Intel8080Emulator.Parity(registers.A);
+                        registers.Flags.Cy = 0;
+                        if ((registers.A & (ushort)0x80) >= 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
                         break;
 
-                    case 0xb7:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0xb7: // ORA A
+                        if ((registers.A & (ushort)0xff) == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
+                        registers.Flags.P = Intel8080Emulator.Parity(registers.A);
+                        registers.Flags.Cy = 0;
+                        if ((registers.A & (ushort)0x80) >= 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
                         break;
 
-                    case 0xb8:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0xb8: // CMP B
+                        x = (byte)(registers.A - registers.B);
+                        if (x == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
+                        if ((x & 0x80) == 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
+                        registers.Flags.P = Intel8080Emulator.Parity(x);
+                        if ((registers.A < registers.B)) registers.Flags.Cy = 1; else registers.Flags.Cy = 0; // Carry Flag
+                        registers.Pc++;
                         break;
 
-                    case 0xb9:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0xb9: // CMP C
+                        x = (byte)(registers.A - registers.C);
+                        if (x == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
+                        if ((x & 0x80) == 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
+                        registers.Flags.P = Intel8080Emulator.Parity(x);
+                        if ((registers.A < registers.C)) registers.Flags.Cy = 1; else registers.Flags.Cy = 0; // Carry Flag
+                        registers.Pc++;
                         break;
 
-                    case 0xba:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0xba: // CMP D
+                        x = (byte)(registers.A - registers.D);
+                        if (x == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
+                        if ((x & 0x80) == 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
+                        registers.Flags.P = Intel8080Emulator.Parity(x);
+                        if ((registers.A < registers.D)) registers.Flags.Cy = 1; else registers.Flags.Cy = 0; // Carry Flag
+                        registers.Pc++;
                         break;
 
-                    case 0xbb:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0xbb: // CMP E
+                        x = (byte)(registers.A - registers.E);
+                        if (x == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
+                        if ((x & 0x80) == 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
+                        registers.Flags.P = Intel8080Emulator.Parity(x);
+                        if ((registers.A < registers.E)) registers.Flags.Cy = 1; else registers.Flags.Cy = 0; // Carry Flag
+                        registers.Pc++;
                         break;
 
-                    case 0xbc:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0xbc: // CMP H
+                        x = (byte)(registers.A - registers.H);
+                        if (x == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
+                        if ((x & 0x80) == 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
+                        registers.Flags.P = Intel8080Emulator.Parity(x);
+                        if ((registers.A < registers.H)) registers.Flags.Cy = 1; else registers.Flags.Cy = 0; // Carry Flag
+                        registers.Pc++;
                         break;
 
-                    case 0xbd:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0xbd: // CMP L
+                        x = (byte)(registers.A - registers.L);
+                        if (x == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
+                        if ((x & 0x80) == 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
+                        registers.Flags.P = Intel8080Emulator.Parity(x);
+                        if ((registers.A < registers.L)) registers.Flags.Cy = 1; else registers.Flags.Cy = 0; // Carry Flag
+                        registers.Pc++;
                         break;
 
-                    case 0xbe:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0xbe: // CMP M (HL)
+                        offset = (ushort)((ushort)(registers.H << 8) | (ushort)registers.L);
+                        x = (byte)(registers.A - registers.memory[offset]);
+                        if (x == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
+                        if ((x & 0x80) == 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
+                        registers.Flags.P = Intel8080Emulator.Parity(x);
+                        if ((registers.A < registers.memory[offset])) registers.Flags.Cy = 1; else registers.Flags.Cy = 0; // Carry Flag
+                        registers.Pc++;
                         break;
 
-                    case 0xbf:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0xbf:  // CMP A
+                        registers.Flags.Z = 1;
+                        registers.Flags.S = 0; // Sign Flag
+                        registers.Flags.P = Intel8080Emulator.Parity(registers.A);
+                        registers.Flags.Cy = 0; // Carry Flag
+                        registers.Pc++;
                         break;
 
-                    case 0xc0:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0xc0: //RNZ -> Return If Not Zero
+                        if (registers.Flags.Z == 0)
+                        {
+                            registers.Pc = (ushort)((ushort)registers.memory[registers.Sp + 1] << 8 | (ushort)registers.memory[registers.Sp]);
+                            registers.Sp += 2;
+                        }
                         break;
 
                     case 0xc1:  // POP B
@@ -952,8 +1310,17 @@ namespace Intel8080Emulator
                         registers.Pc--; //Workaround because of the pc== at the end. Will think of a better logic later
                         break;
 
-                    case 0xc4:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0xc4: // CNZ adr
+                        if (registers.Flags.Z == 0)
+                        {
+                            ret = (ushort)(registers.Pc + 2);
+                            registers.memory[registers.Sp - 1] = (byte)((ret >> 8) & 0xff);
+                            registers.memory[registers.Sp - 2] = (byte)((ret) & 0xff);
+                            registers.Sp = (ushort)(registers.Sp - 2);
+                            registers.Pc = (ushort)((((ushort)opcode[2]) << (ushort)8) | (ushort)opcode[1]);
+                            registers.Pc--;
+                        }
+                        else registers.Pc += (ushort)2;
                         break;
 
                     case 0xc5: // PUSH B
@@ -969,14 +1336,24 @@ namespace Intel8080Emulator
                         if ((answer > (ushort)0xff)) registers.Flags.Cy = 1; else registers.Flags.Cy = 0; // Carry Flag
                         registers.Flags.P = Intel8080Emulator.Parity(answer);
                         registers.A = (byte)(answer & (ushort)0xff); // Returning to 8 bits
+                        registers.Pc++;
                         break;
 
-                    case 0xc7:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0xc7: // RST 0 -- CAll $0
+                        ret = (ushort)(registers.Pc + 2);
+                        registers.memory[registers.Sp - 1] = (byte)((ret >> 8) & 0xff);
+                        registers.memory[registers.Sp - 2] = (byte)((ret) & 0xff);
+                        registers.Sp = (ushort)(registers.Sp - 2);
+                        registers.Pc = (ushort)0x00;
+                        registers.Pc--;
                         break;
 
-                    case 0xc8:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0xc8: // RZ
+                        if (registers.Flags.Z == 1)
+                        {
+                            registers.Pc = (ushort)((ushort)registers.memory[registers.Sp + 1] << 8 | (ushort)registers.memory[registers.Sp]);
+                            registers.Sp += 2;
+                        }
                         break;
 
                     case 0xc9:  // RET
@@ -984,19 +1361,33 @@ namespace Intel8080Emulator
                         registers.Sp += 2;
                         break;
 
-                    case 0xca:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0xca: // JZ ADR
+                        if (registers.Flags.Z == 1)
+                        {
+                            registers.Pc = (ushort)((ushort)opcode[(byte)2] << 8 | (ushort)opcode[(byte)1]);
+                            registers.Pc--;
+                        }
+                        else registers.Pc += (ushort)2;
                         break;
 
-                    case 0xcb:
+                    case 0xcb: // NOP
                         break;
 
-                    case 0xcc:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0xcc: // CZ ADR
+                        if (registers.Flags.Z == 1)
+                        {
+                            ret = (ushort)(registers.Pc + 2);
+                            registers.memory[registers.Sp - 1] = (byte)((ret >> 8) & 0xff);
+                            registers.memory[registers.Sp - 2] = (byte)((ret) & 0xff);
+                            registers.Sp = (ushort)(registers.Sp - 2);
+                            registers.Pc = (ushort)((((ushort)opcode[2]) << (ushort)8) | (ushort)opcode[1]);
+                            registers.Pc--;
+                        }
+                        else registers.Pc += (ushort)2;
                         break;
 
                     case 0xcd:  // CALL address
-                        ushort ret = (ushort)(registers.Pc + 2);
+                        ret = (ushort)(registers.Pc + 2);
                         registers.memory[registers.Sp - 1] = (byte)((ret >> 8) & 0xff);
                         registers.memory[registers.Sp - 2] = (byte)((ret) & 0xff);
                         registers.Sp = (ushort)(registers.Sp - 2);
@@ -1004,7 +1395,7 @@ namespace Intel8080Emulator
                         registers.Pc--;
                         break;
 
-                    case 0xce:
+                    case 0xce: // ACI D8
                         throw new UnimplementedInstruction(opcode[0].ToString("X2"));
                         break;
 
