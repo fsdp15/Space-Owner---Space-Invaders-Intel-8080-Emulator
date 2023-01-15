@@ -17,13 +17,14 @@ namespace Intel8080Emulator
         byte l;
         ushort sp;
         ushort pc;
-        byte* memory;
+        public byte[] memory; //16K
         Flags flags;
         byte int_enable;
 
         public Registers()
         {
             this.Flags = new Flags();
+            this.memory = new byte[0x10000]; // 16k of memory
 
         }
 
@@ -36,8 +37,6 @@ namespace Intel8080Emulator
         public byte L { get => l; set => l = value; }
         public ushort Pc { get => pc; set => pc = value; }
         public ushort Sp { get => sp; set => sp = value; }
-        public unsafe byte* Memory { get => memory; set => memory = value; }
         public Flags Flags { get => flags; set => flags = value; }
-        public byte Int_enable { get => int_enable; set => int_enable = value; }
-    }
+        public byte Int_enable { get => int_enable; set => int_enable = value; }    }
 }
