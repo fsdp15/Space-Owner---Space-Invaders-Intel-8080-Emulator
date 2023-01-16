@@ -36,6 +36,54 @@ namespace Intel8080Emulator
             Console.WriteLine();
         }
 
+        public void ReadTestRom()
+        {
+            FileStream romObj = new FileStream("C:\\Users\\felip\\OneDrive\\Desktop\\Emulator\\invaders\\cpudiag.bin", FileMode.Open, FileAccess.Read); //change to argv
+
+            romObj.Seek(0, SeekOrigin.Begin);
+            Registers registers = new();
+            registers.Pc = 0;
+
+            Console.WriteLine();
+
+            for (int i = 0 + 0x100; i < romObj.Length + 0x100; i++)
+            {
+                registers.memory[i] = (byte)romObj.ReadByte();
+            }
+
+            Console.WriteLine();
+
+            // Fix the first instruction to be JMP 0x100
+            registers.memory[0] = 0xc3; // OPCode for JMP
+            registers.memory[1] = 0;
+            registers.memory[2] = 0x01;
+
+            // Fix the stack pointer from 0x6ad to 0x7ad
+            // 0x06 is byte 112 in the test code, which is 112 + 0x100 = 368 in memory
+            registers.memory[368] = 0x7;
+
+            // Skip DAA Test
+            registers.memory[0x59c] = 0xc3; //JMP
+            registers.memory[0x59d] = 0xc2;
+            registers.memory[0x59e] = 0x05;
+
+            Console.WriteLine();
+
+            while (1 == 1)
+            {
+                Console.WriteLine();
+                this.Emulate8080Op(registers);
+
+                Console.WriteLine();
+
+                using (System.IO.StreamWriter file = File.AppendText("C:\\Users\\felip\\OneDrive\\Desktop\\Emulator\\invaders\\testDebug.txt"))
+                {
+                    file.WriteLine(emulationLog.ToString());
+                }
+                emulationLog.Clear();
+            }
+        }
+
         public void ReadRom()
         {
             FileStream romObj = new FileStream("C:\\Users\\felip\\OneDrive\\Desktop\\Emulator\\invaders\\invaders", FileMode.Open, FileAccess.Read); //change to argv
@@ -1387,24 +1435,71 @@ namespace Intel8080Emulator
                         break;
 
                     case 0xcd:  // CALL address
+
+                        if (0x0005 == ((((ushort)opcode[2]) << 8) | ((ushort)opcode[1])))
+                        {
+                            if (registers.C == 9)
+                            {
+                                ushort offset2 = (ushort)(((ushort)registers.D) << 8 | registers.E);
+                                int i = 3; //Skip prefix bytes
+                                byte str = registers.memory[offset2 + i];
+                                while ((char)str != '$')
+                                {
+                                    Console.Write(str);
+                                    i++;
+                                    str = registers.memory[offset2 + i];
+                                }
+                                Console.WriteLine("");
+                            }
+                            else
+                            {
+                                if (registers.C == 2)
+                                {
+                                    Console.WriteLine("Console.WriteLine(\"\");");
+                                }
+                            }
+                        }
+                        else if (0x0000 == ((((ushort)opcode[2]) << 8) | ((ushort)opcode[1])))
+                        {
+                            System.Environment.Exit(1);
+                        }
+
+                        else {
+
+                            ret = (ushort)(registers.Pc + 2);
+                            registers.memory[registers.Sp - 1] = (byte)((ret >> 8) & 0xff);
+                            registers.memory[registers.Sp - 2] = (byte)((ret) & 0xff);
+                            registers.Sp = (ushort)(registers.Sp - 2);
+                            registers.Pc = (ushort)((((ushort)opcode[2]) << (ushort)8) | (ushort)opcode[1]);
+                            registers.Pc--;
+                        }
+                        break;
+
+                    case 0xce: // ACI D8
+                        answer = (ushort)((ushort)registers.A + (ushort)opcode[2] + (ushort)registers.Flags.Cy); // Higher precision to capture carry out
+                        if ((answer & (ushort)0xff) == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
+                        if ((answer & (ushort)0x80) >= 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
+                        if ((answer > (ushort)0xff)) registers.Flags.Cy = 1; else registers.Flags.Cy = 0; // Carry Flag
+                        registers.Flags.P = Intel8080Emulator.Parity(answer);
+                        registers.A = (byte)(answer & (ushort)0xff); // Returning to 8 bits
+                        registers.Pc++;
+                        break;
+
+                    case 0xcf: // RST 1
                         ret = (ushort)(registers.Pc + 2);
                         registers.memory[registers.Sp - 1] = (byte)((ret >> 8) & 0xff);
                         registers.memory[registers.Sp - 2] = (byte)((ret) & 0xff);
                         registers.Sp = (ushort)(registers.Sp - 2);
-                        registers.Pc = (ushort)((((ushort)opcode[2]) << (ushort)8) | (ushort)opcode[1]);
+                        registers.Pc = (ushort)0x08;
                         registers.Pc--;
                         break;
 
-                    case 0xce: // ACI D8
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
-                        break;
-
-                    case 0xcf:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
-                        break;
-
-                    case 0xd0:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0xd0: // RNC
+                        if (registers.Flags.Cy == 0)
+                        {
+                            registers.Pc = (ushort)((ushort)registers.memory[registers.Sp + 1] << 8 | (ushort)registers.memory[registers.Sp]);
+                            registers.Sp += 2;
+                        }
                         break;
 
                     case 0xd1:
@@ -1413,16 +1508,30 @@ namespace Intel8080Emulator
                         registers.Sp += 2;
                         break;
 
-                    case 0xd2:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0xd2: // JNC ADR
+                        if (registers.Flags.Cy == 0)
+                        {
+                            registers.Pc = (ushort)((ushort)opcode[(byte)2] << 8 | (ushort)opcode[(byte)1]);
+                            registers.Pc--;
+                        }
+                        else registers.Pc += (ushort)2;
                         break;
 
-                    case 0xd3: // OUT
+                    case 0xd3: // OUT D8
                         registers.Pc++;
                         break;
 
-                    case 0xd4:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0xd4: // CNC ADR
+                        if (registers.Flags.Cy == 0)
+                        {
+                            ret = (ushort)(registers.Pc + 2);
+                            registers.memory[registers.Sp - 1] = (byte)((ret >> 8) & 0xff);
+                            registers.memory[registers.Sp - 2] = (byte)((ret) & 0xff);
+                            registers.Sp = (ushort)(registers.Sp - 2);
+                            registers.Pc = (ushort)((((ushort)opcode[2]) << (ushort)8) | (ushort)opcode[1]);
+                            registers.Pc--;
+                        }
+                        else registers.Pc += (ushort)2;
                         break;
 
                     case 0xd5:
@@ -1431,46 +1540,90 @@ namespace Intel8080Emulator
                         registers.Sp -= 2;
                         break;
 
-                    case 0xd6:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0xd6: // SUI D8
+                        answer = (ushort)((ushort)registers.A - (ushort)opcode[2]); // Higher precision to capture carry out
+                        if ((answer & (ushort)0xff) == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
+                        if ((answer & (ushort)0x80) >= 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
+                        if ((answer > (ushort)0xff)) registers.Flags.Cy = 1; else registers.Flags.Cy = 0; // Carry Flag
+                        registers.Flags.P = Intel8080Emulator.Parity(answer);
+                        registers.A = (byte)(answer & (ushort)0xff); // Returning to 8 bits
+                        registers.Pc++;
                         break;
 
-                    case 0xd7:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0xd7: // RST 2
+                        ret = (ushort)(registers.Pc + 2);
+                        registers.memory[registers.Sp - 1] = (byte)((ret >> 8) & 0xff);
+                        registers.memory[registers.Sp - 2] = (byte)((ret) & 0xff);
+                        registers.Sp = (ushort)(registers.Sp - 2);
+                        registers.Pc = (ushort)0x10;
+                        registers.Pc--;
                         break;
 
-                    case 0xd8:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0xd8: // RC
+                        if (registers.Flags.Cy == 1)
+                        {
+                            registers.Pc = (ushort)((ushort)registers.memory[registers.Sp + 1] << 8 | (ushort)registers.memory[registers.Sp]);
+                            registers.Sp += 2;
+                        }
                         break;
 
-                    case 0xd9:
+                    case 0xd9: // NOP
                         break;
 
-                    case 0xda:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0xda:  // JC ADR
+                        if (registers.Flags.Cy == 1)
+                        {
+                            registers.Pc = (ushort)((ushort)opcode[(byte)2] << 8 | (ushort)opcode[(byte)1]);
+                            registers.Pc--;
+                        }
+                        else registers.Pc += (ushort)2;
                         break;
 
                     case 0xdb: // IN
                         registers.Pc++;
                         break;
 
-                    case 0xdc:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0xdc:  // CC adr
+                        if (registers.Flags.Cy == 1)
+                        {
+                            ret = (ushort)(registers.Pc + 2);
+                            registers.memory[registers.Sp - 1] = (byte)((ret >> 8) & 0xff);
+                            registers.memory[registers.Sp - 2] = (byte)((ret) & 0xff);
+                            registers.Sp = (ushort)(registers.Sp - 2);
+                            registers.Pc = (ushort)((((ushort)opcode[2]) << (ushort)8) | (ushort)opcode[1]);
+                            registers.Pc--;
+                        }
+                        else registers.Pc += (ushort)2;
                         break;
 
-                    case 0xdd:
+                    case 0xdd: // NOP
                         break;
 
-                    case 0xde:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0xde: // SBI D8
+                        answer = (ushort)((ushort)registers.A - (ushort)opcode[2] - registers.Flags.Cy); // Higher precision to capture carry out
+                        if ((answer & (ushort)0xff) == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
+                        if ((answer & (ushort)0x80) >= 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
+                        if ((answer > (ushort)0xff)) registers.Flags.Cy = 1; else registers.Flags.Cy = 0; // Carry Flag
+                        registers.Flags.P = Intel8080Emulator.Parity(answer);
+                        registers.A = (byte)(answer & (ushort)0xff); // Returning to 8 bits
+                        registers.Pc++;
                         break;
 
-                    case 0xdf:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0xdf: // RST 3
+                        ret = (ushort)(registers.Pc + 2);
+                        registers.memory[registers.Sp - 1] = (byte)((ret >> 8) & 0xff);
+                        registers.memory[registers.Sp - 2] = (byte)((ret) & 0xff);
+                        registers.Sp = (ushort)(registers.Sp - 2);
+                        registers.Pc = (ushort)0x18;
+                        registers.Pc--;
                         break;
 
-                    case 0xe0:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0xe0: // RPO
+                        if (registers.Flags.P == 0)
+                        {
+                            registers.Pc = (ushort)((ushort)registers.memory[registers.Sp + 1] << 8 | (ushort)registers.memory[registers.Sp]);
+                            registers.Sp += 2;
+                        }
                         break;
 
                     case 0xe1: // POP H	
@@ -1479,19 +1632,38 @@ namespace Intel8080Emulator
                         registers.Sp += 2;
                         break;
 
-                    case 0xe2:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0xe2: // JPO adr
+                        if (registers.Flags.P == 0)
+                        {
+                            registers.Pc = (ushort)((ushort)opcode[(byte)2] << 8 | (ushort)opcode[(byte)1]);
+                            registers.Pc--;
+                        }
+                        else registers.Pc += (ushort)2;
                         break;
 
-                    case 0xe3:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0xe3: // XTHL
+                        aux1 = registers.L;
+                        registers.L = registers.memory[registers.Sp];
+                        registers.memory[registers.Sp] = (byte)aux1;
+                        aux2 = registers.H;
+                        registers.H = registers.memory[registers.Sp+1];
+                        registers.memory[registers.Sp+1] = (byte)aux2;
                         break;
 
-                    case 0xe4:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0xe4: // CPO Adr
+                        if (registers.Flags.P == 0)
+                        {
+                            ret = (ushort)(registers.Pc + 2);
+                            registers.memory[registers.Sp - 1] = (byte)((ret >> 8) & 0xff);
+                            registers.memory[registers.Sp - 2] = (byte)((ret) & 0xff);
+                            registers.Sp = (ushort)(registers.Sp - 2);
+                            registers.Pc = (ushort)((((ushort)opcode[2]) << (ushort)8) | (ushort)opcode[1]);
+                            registers.Pc--;
+                        }
+                        else registers.Pc += (ushort)2;
                         break;
 
-                    case 0xe5:
+                    case 0xe5: // PUSH H
                         registers.memory[registers.Sp - 1] = registers.H;
                         registers.memory[registers.Sp - 2] = registers.L;
                         registers.Sp -= 2;
@@ -1507,20 +1679,35 @@ namespace Intel8080Emulator
                         registers.Pc++;
                         break;
 
-                    case 0xe7:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0xe7: // RST 4
+                        ret = (ushort)(registers.Pc + 2);
+                        registers.memory[registers.Sp - 1] = (byte)((ret >> 8) & 0xff);
+                        registers.memory[registers.Sp - 2] = (byte)((ret) & 0xff);
+                        registers.Sp = (ushort)(registers.Sp - 2);
+                        registers.Pc = (ushort)0x20;
+                        registers.Pc--;
                         break;
 
-                    case 0xe8:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0xe8: // RPE
+                        if (registers.Flags.P == 1)
+                        {
+                            registers.Pc = (ushort)((ushort)registers.memory[registers.Sp + 1] << 8 | (ushort)registers.memory[registers.Sp]);
+                            registers.Sp += 2;
+                        }
                         break;
 
-                    case 0xe9:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0xe9: // PCHL
+                        registers.Pc = (ushort)(((ushort)registers.H) << 8);
+                        registers.Pc = (ushort)(registers.Pc | (ushort)registers.L);
                         break;
 
-                    case 0xea:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0xea: // JPE adr
+                        if (registers.Flags.P == 1)
+                        {
+                            registers.Pc = (ushort)((ushort)opcode[(byte)2] << 8 | (ushort)opcode[(byte)1]);
+                            registers.Pc--;
+                        }
+                        else registers.Pc += (ushort)2;
                         break;
 
                     case 0xeb: // XCHG
@@ -1532,23 +1719,46 @@ namespace Intel8080Emulator
                         registers.E = temp2;
                         break;
 
-                    case 0xec:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0xec: // CPE adr
+                        if (registers.Flags.P == 1)
+                        {
+                            ret = (ushort)(registers.Pc + 2);
+                            registers.memory[registers.Sp - 1] = (byte)((ret >> 8) & 0xff);
+                            registers.memory[registers.Sp - 2] = (byte)((ret) & 0xff);
+                            registers.Sp = (ushort)(registers.Sp - 2);
+                            registers.Pc = (ushort)((((ushort)opcode[2]) << (ushort)8) | (ushort)opcode[1]);
+                            registers.Pc--;
+                        }
+                        else registers.Pc += (ushort)2;
                         break;
 
-                    case 0xed:
+                    case 0xed: // NOP
                         break;
 
                     case 0xee:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                        registers.A = (byte)(registers.A ^ opcode[1]);
+                        if ((registers.A & (ushort)0xff) == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
+                        registers.Flags.P = Intel8080Emulator.Parity(registers.A);
+                        registers.Flags.Cy = 0;
+                        if ((registers.A & (ushort)0x80) >= 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
+                        registers.Pc++;
                         break;
 
-                    case 0xef:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0xef: // RST 5
+                        ret = (ushort)(registers.Pc + 2);
+                        registers.memory[registers.Sp - 1] = (byte)((ret >> 8) & 0xff);
+                        registers.memory[registers.Sp - 2] = (byte)((ret) & 0xff);
+                        registers.Sp = (ushort)(registers.Sp - 2);
+                        registers.Pc = (ushort)0x28;
+                        registers.Pc--;
                         break;
 
-                    case 0xf0:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0xf0: // RP
+                        if (registers.Flags.P == 0)
+                        {
+                            registers.Pc = (ushort)((ushort)registers.memory[registers.Sp + 1] << 8 | (ushort)registers.memory[registers.Sp]);
+                            registers.Sp += 2;
+                        }
                         break;
 
                     case 0xf1: // POP PSW
@@ -1562,16 +1772,30 @@ namespace Intel8080Emulator
                         registers.Sp += 2;
                         break;
 
-                    case 0xf2:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0xf2: // JP adr
+                        if (registers.Flags.P == 1)
+                        {
+                            registers.Pc = (ushort)((ushort)opcode[(byte)2] << 8 | (ushort)opcode[(byte)1]);
+                            registers.Pc--;
+                        }
+                        else registers.Pc += (ushort)2;
                         break;
 
                     case 0xf3: // DI
                         registers.Int_enable = 0x00;
                         break;
 
-                    case 0xf4:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0xf4: // CP adr
+                        if (registers.Flags.S == 0)
+                        {
+                            ret = (ushort)(registers.Pc + 2);
+                            registers.memory[registers.Sp - 1] = (byte)((ret >> 8) & 0xff);
+                            registers.memory[registers.Sp - 2] = (byte)((ret) & 0xff);
+                            registers.Sp = (ushort)(registers.Sp - 2);
+                            registers.Pc = (ushort)((((ushort)opcode[2]) << (ushort)8) | (ushort)opcode[1]);
+                            registers.Pc--;
+                        }
+                        else registers.Pc += (ushort)2;
                         break;
 
                     case 0xf5: // PUSH PSW
@@ -1582,35 +1806,64 @@ namespace Intel8080Emulator
                         registers.Sp = (ushort)(registers.Sp - (ushort)2);
                         break;
 
-                    case 0xf6:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0xf6: // ORI D8
+                        registers.A = (byte)(registers.A | opcode[1]);
+                        if ((registers.A & (ushort)0xff) == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
+                        registers.Flags.P = Intel8080Emulator.Parity(registers.A);
+                        registers.Flags.Cy = 0;
+                        if ((registers.A & (ushort)0x80) >= 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
+                        registers.Pc++;
                         break;
 
-                    case 0xf7:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0xf7: // RST 6
+                        ret = (ushort)(registers.Pc + 2);
+                        registers.memory[registers.Sp - 1] = (byte)((ret >> 8) & 0xff);
+                        registers.memory[registers.Sp - 2] = (byte)((ret) & 0xff);
+                        registers.Sp = (ushort)(registers.Sp - 2);
+                        registers.Pc = (ushort)0x30;
+                        registers.Pc--;
                         break;
 
-                    case 0xf8:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0xf8: // RM
+                        if (registers.Flags.S == 1)
+                        {
+                            registers.Pc = (ushort)((ushort)registers.memory[registers.Sp + 1] << 8 | (ushort)registers.memory[registers.Sp]);
+                            registers.Sp += 2;
+                        }
                         break;
 
-                    case 0xf9:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0xf9: // SPHL
+                        registers.Sp = (ushort)(((ushort)registers.H) << 8);
+                        registers.Sp = (ushort)(registers.Sp | (ushort)registers.L);
                         break;
 
-                    case 0xfa:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0xfa: // JM Addr
+                        if (registers.Flags.S == 1)
+                        {
+                            registers.Pc = (ushort)((ushort)opcode[(byte)2] << 8 | (ushort)opcode[(byte)1]);
+                            registers.Pc--;
+                        }
+                        else registers.Pc += (ushort)2;
                         break;
 
                     case 0xfb:  // EI
                         registers.Int_enable = 0x01;
                         break;
 
-                    case 0xfc:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0xfc: // CM ADR
+                        if (registers.Flags.S == 1)
+                        {
+                            ret = (ushort)(registers.Pc + 2);
+                            registers.memory[registers.Sp - 1] = (byte)((ret >> 8) & 0xff);
+                            registers.memory[registers.Sp - 2] = (byte)((ret) & 0xff);
+                            registers.Sp = (ushort)(registers.Sp - 2);
+                            registers.Pc = (ushort)((((ushort)opcode[2]) << (ushort)8) | (ushort)opcode[1]);
+                            registers.Pc--;
+                        }
+                        else registers.Pc += (ushort)2;
                         break;
 
-                    case 0xfd:
+                    case 0xfd: // NOP
                         break;
 
                     case 0xfe: // CPI byte
@@ -1622,8 +1875,13 @@ namespace Intel8080Emulator
                         registers.Pc++;
                         break;
 
-                    case 0xff:
-                        throw new UnimplementedInstruction(opcode[0].ToString("X2"));
+                    case 0xff: // RST 7
+                        ret = (ushort)(registers.Pc + 2);
+                        registers.memory[registers.Sp - 1] = (byte)((ret >> 8) & 0xff);
+                        registers.memory[registers.Sp - 2] = (byte)((ret) & 0xff);
+                        registers.Sp = (ushort)(registers.Sp - 2);
+                        registers.Pc = (ushort)0x38;
+                        registers.Pc--;
                         break;
 
                 }

@@ -10,7 +10,8 @@ using Intel8080Emulator;
 //disassembler.ReadRom();
 
 Intel8080Emulator.Intel8080Emulator intel8080Emulator = new();
-intel8080Emulator.ReadRom();
+//intel8080Emulator.ReadRom();
+intel8080Emulator.ReadTestRom();
 
 
 
