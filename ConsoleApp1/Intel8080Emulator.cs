@@ -117,9 +117,27 @@ namespace Intel8080Emulator
 
 
 
-        public static byte Parity(ushort parity)
+        public static byte Parity(int x, int size)
         {
-            return (byte) 0;
+            int i;
+            int p = 0;
+            x = (x & ((1 << size) - 1)); // ANDing with all ONES
+
+
+            for (i=0;i<size;i++)
+            {
+                if ((x & 0x1) == 0x1) p++; // Checking each bit to see if it is pair or odd
+                x = x >> 1;
+            }
+
+            if ((p & 0x1) == 0) // Checking last bit to see if it is even or odd
+            {
+                return 0;
+            }
+            else
+            {
+                return 1;
+            }
         }
 
         public int Emulate8080Op(Registers registers)
@@ -1436,23 +1454,29 @@ namespace Intel8080Emulator
 
                     case 0xcd:  // CALL address
 
+                        Console.WriteLine("");
                         if (0x0005 == ((((ushort)opcode[2]) << 8) | ((ushort)opcode[1])))
                         {
+                            Console.WriteLine("");
                             if (registers.C == 9)
                             {
+                                Console.WriteLine("");
                                 ushort offset2 = (ushort)(((ushort)registers.D) << 8 | registers.E);
                                 int i = 3; //Skip prefix bytes
                                 byte str = registers.memory[offset2 + i];
                                 while ((char)str != '$')
                                 {
-                                    Console.Write(str);
+                                    Console.Write((char)str);
                                     i++;
                                     str = registers.memory[offset2 + i];
                                 }
+                                Console.Write((char)str);
                                 Console.WriteLine("");
+                                System.Environment.Exit(1);
                             }
                             else
                             {
+                                Console.WriteLine("");
                                 if (registers.C == 2)
                                 {
                                     Console.WriteLine("Console.WriteLine(\"\");");
@@ -1461,6 +1485,7 @@ namespace Intel8080Emulator
                         }
                         else if (0x0000 == ((((ushort)opcode[2]) << 8) | ((ushort)opcode[1])))
                         {
+                            Console.WriteLine("");
                             System.Environment.Exit(1);
                         }
 
