@@ -4,6 +4,8 @@ using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection.Metadata.Ecma335;
+using System.Security.AccessControl;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -13,6 +15,10 @@ namespace Intel8080Emulator
     {
         private StringBuilder emulationLog;
         private Disassembler disassembler;
+
+
+
+
         // I need to check how to inject this dependency
 
         public Intel8080Emulator()
@@ -34,6 +40,47 @@ namespace Intel8080Emulator
                 registers.C.ToString("X2"), registers.D.ToString("X2"), registers.E.ToString("X2"), registers.H.ToString("X2"),
                 registers.L.ToString("X2"), registers.Sp.ToString("X4")));
             Console.WriteLine();
+        }
+
+        public void MachineIn(Registers registers, byte port, Ports ports)
+        {
+            switch (port)
+            {
+                case 3: // Read shift data
+                    ushort aux = (ushort)((ushort)(ports.Shift1 << 8) | (ushort)ports.Shift0);
+                    ports.InPorts[3] = (byte)((aux >> (8 - ports.ShiftOffset)) & 0x00ff);
+                    break;
+                default:
+                    return;
+            }        
+        }
+
+        public void MachineOut(byte port, byte value, Ports ports) // value of the port
+        {
+            switch (port)
+            {
+                case 2: // shift offset
+                    ports.ShiftOffset = (byte)(value & 0x7); // bits 0, 1 and 2 define the offset
+                    break;
+                case 4:
+                    ports.Shift0 = ports.Shift1;
+                    ports.Shift1 = value;
+                    break;
+            }
+        }
+
+        public void MachineKeyDown(char key, Ports ports)
+        {
+            switch (key)
+            {
+                case LEFT:
+                    ports.InPorts[0] |= 0x20;   // Bit 5 must be set. |= is an OR
+                    break;
+                case RIGHT:
+                    ports.InPorts[1] |= 0x40;   // Bit 6 must be set
+                    break;
+
+            }
         }
 
         public void ReadTestRom()
@@ -88,8 +135,10 @@ namespace Intel8080Emulator
         {
             FileStream romObj = new FileStream("C:\\Users\\felip\\OneDrive\\Desktop\\Emulator\\invaders\\invaders", FileMode.Open, FileAccess.Read); //change to argv
             romObj.Seek(0, SeekOrigin.Begin);
-            Registers registers = new();
+            Registers registers = new(); // Move to scope of the class
             registers.Pc = 0;
+
+            Ports ports = new(); // Move to scope of the class
 
             Console.WriteLine();
 
@@ -103,7 +152,24 @@ namespace Intel8080Emulator
             while (1 == 1)
             {
                 Console.WriteLine();
-                this.Emulate8080Op(registers);
+
+                fixed (byte* opcode = &registers.memory[registers.Pc])
+                    if (registers.memory[registers.Pc] == 0xdb) // IN INSTRUCTION
+                    {
+                        ushort port = (registers.memory[registers.Pc + 1]);
+                        registers.A = this.MachineIn(registers, port);
+                        registers.Pc+=2;
+                    }
+                    else if (registers.memory[registers.Pc] == 0xd3) // OUT INSTRUCTION
+                    {
+                        ushort port = (registers.memory[registers.Pc + 1]);
+                        this.MachineOut(registers, port);
+                        registers.Pc+=2;
+                    }
+                    else
+                    {
+                        this.Emulate8080Op(registers);
+                    }
 
                 Console.WriteLine();
 
@@ -175,12 +241,10 @@ namespace Intel8080Emulator
                         break;
 
                     case 0x03: // INX B
-                        answer = (ushort)(registers.B);
-                        answer = (ushort)(answer << 8);
-                        answer = (ushort)(answer | (ushort)registers.C);
-                        answer += (ushort)0x01;
-                        registers.B = (byte)(answer >> 8 | (ushort)0xff);
-                        registers.C = (byte)(answer & (ushort)0xff);
+                        answer = (ushort)(((ushort)registers.B << 8) | (ushort)registers.C);
+                        answer++;
+                        registers.B = (byte)((answer & 0xff00) >> 8);
+                        registers.C = (byte)((answer & 0x00ff));
                         break;
 
                     case 0x04: // INR B
@@ -204,8 +268,8 @@ namespace Intel8080Emulator
 
                     case 0x07: // RLC
                         x = registers.A;
-                        registers.A = (byte)((x << 0x01) | ((x & 0x80) >> 7));
-                        if ((x & 0x01) == 0x01) registers.Flags.Cy = 1; else registers.Flags.Cy = 0; // Carry Flag
+                        registers.A = (byte)((x << (byte)1) | ((x & (byte)0x80) >> (byte)7));
+                        if ((registers.A & (byte)0x01) == (byte)0x01) registers.Flags.Cy = 1; else registers.Flags.Cy = 0; // Carry Flag
                         break;
 
                     case 0x08: // NOP
@@ -226,12 +290,10 @@ namespace Intel8080Emulator
                         break;
 
                     case 0x0b: // DCX B 
-                        answer = (ushort)(registers.B);
-                        answer = (ushort)(answer << 8);
-                        answer = (ushort)(answer | (ushort)registers.C);
-                        answer -= (ushort)0x01;
-                        registers.B = (byte)(answer >> 8 | (ushort)0xff);
-                        registers.C = (byte)(answer & (ushort)0xff);
+                        answer = (ushort)(((ushort)registers.B << 8) | (ushort)registers.C);
+                        answer--;
+                        registers.B = (byte)((answer & 0xff00) >> 8);
+                        registers.C = (byte)((answer & 0x00ff));
                         break;
 
                     case 0x0c: // INR C
@@ -324,12 +386,10 @@ namespace Intel8080Emulator
                         break;
 
                     case 0x1b: // DCX D
-                        answer = (ushort)(registers.D);
-                        answer = (ushort)(answer << 8);
-                        answer = (ushort)(answer | (ushort)registers.E);
-                        answer -= (ushort)0x01;
-                        registers.D = (byte)(answer >> 8 | (ushort)0xff);
-                        registers.E = (byte)(answer & (ushort)0xff);
+                        answer = (ushort)(((ushort)registers.D << 8) | (ushort)registers.E);
+                        answer--;
+                        registers.D = (byte)((answer & 0xff00) >> 8);
+                        registers.E = (byte)((answer & 0x00ff));
                         break;
 
                     case 0x1c: // INR E
@@ -415,18 +475,16 @@ namespace Intel8080Emulator
                         break;
 
                     case 0x2a: //	LHLD adr
-                        registers.L = registers.memory[((ushort)opcode[2] << 8) | (ushort)opcode[1]];
-                        registers.H = registers.memory[(((ushort)opcode[2] << 8) | (ushort)opcode[1]) + 1];
+                        registers.L = registers.memory[(((ushort)opcode[2]) << 8) | (ushort)opcode[1]];
+                        registers.H = registers.memory[((((ushort)opcode[2]) << 8) | (ushort)opcode[1]) + 1];
                         registers.Pc += 2;
                         break;
 
                     case 0x2b: // DCX H
-                        answer = (ushort)(registers.H);
-                        answer = (ushort)(answer << 8);
-                        answer = (ushort)(answer | (ushort)registers.L);
-                        answer -= (ushort)0x01;
-                        registers.H = (byte)(answer >> 8 | (ushort)0xff);
-                        registers.L = (byte)(answer & (ushort)0xff);
+                        answer = (ushort)(((ushort)registers.H << 8) | (ushort)registers.L);
+                        answer--;
+                        registers.H = (byte)((answer & 0xff00) >> 8);
+                        registers.L = (byte)((answer & 0x00ff));
                         break;
 
                     case 0x2c: // INR L
@@ -471,21 +529,21 @@ namespace Intel8080Emulator
                         break;
 
                     case 0x34: // INR M
-                        registers.memory[((ushort)registers.H << 8) | (ushort)registers.L]++;
-                        if ((registers.memory[((ushort)registers.H << 8) | (ushort)registers.L] & 0xff) == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
-                        if ((registers.memory[((ushort)registers.H << 8) | (ushort)registers.L] & 0x80) >= 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
-                        registers.Flags.P = Intel8080Emulator.Parity(registers.memory[((ushort)registers.H << 8) | (ushort)registers.L], 16);
+                        registers.memory[(((ushort)registers.H) << 8) | (ushort)registers.L]++;
+                        if ((registers.memory[(((ushort)registers.H) << 8) | (ushort)registers.L] & 0xff) == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
+                        if ((registers.memory[(((ushort)registers.H) << 8) | (ushort)registers.L] & 0x80) >= 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
+                        registers.Flags.P = Intel8080Emulator.Parity(registers.memory[(((ushort)registers.H) << 8) | (ushort)registers.L], 8);
                         break;
 
                     case 0x35: // DCR M
-                        registers.L--;
-                        if ((registers.L & 0xff) == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
-                        if ((registers.L & 0x80) >= 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
-                        registers.Flags.P = Intel8080Emulator.Parity(registers.L, 8);
+                        registers.memory[(((ushort)registers.H) << 8) | (ushort)registers.L]--;
+                        if ((registers.memory[(((ushort)registers.H) << 8) | (ushort)registers.L] & 0xff) == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
+                        if ((registers.memory[(((ushort)registers.H) << 8) | (ushort)registers.L] & 0x80) >= 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
+                        registers.Flags.P = Intel8080Emulator.Parity(registers.memory[(((ushort)registers.H) << 8) | (ushort)registers.L], 8);
                         break;
 
                     case 0x36: // 	MVI M,D8 -- (HL) <- byte 2
-                        registers.memory[((ushort)registers.H << 8) | (ushort)registers.L] = opcode[1];
+                        registers.memory[(((ushort)registers.H) << 8) | (ushort)registers.L] = opcode[1];
                         registers.Pc++;
                         break;
 
@@ -1208,7 +1266,7 @@ namespace Intel8080Emulator
                         registers.A = 0;
                         registers.Flags.Z = 1;
                         registers.Flags.S = 0;
-                        registers.Flags.P = 0;
+                        registers.Flags.P = 1;
                         registers.Flags.Cy = 0;
                         break;
 
@@ -1281,7 +1339,6 @@ namespace Intel8080Emulator
                         if ((x & 0x80) == 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
                         registers.Flags.P = Intel8080Emulator.Parity(x, 8);
                         if ((registers.A < registers.B)) registers.Flags.Cy = 1; else registers.Flags.Cy = 0; // Carry Flag
-                        registers.Pc++;
                         break;
 
                     case 0xb9: // CMP C
@@ -1290,7 +1347,6 @@ namespace Intel8080Emulator
                         if ((x & 0x80) == 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
                         registers.Flags.P = Intel8080Emulator.Parity(x, 8);
                         if ((registers.A < registers.C)) registers.Flags.Cy = 1; else registers.Flags.Cy = 0; // Carry Flag
-                        registers.Pc++;
                         break;
 
                     case 0xba: // CMP D
@@ -1299,7 +1355,6 @@ namespace Intel8080Emulator
                         if ((x & 0x80) == 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
                         registers.Flags.P = Intel8080Emulator.Parity(x, 8);
                         if ((registers.A < registers.D)) registers.Flags.Cy = 1; else registers.Flags.Cy = 0; // Carry Flag
-                        registers.Pc++;
                         break;
 
                     case 0xbb: // CMP E
@@ -1308,7 +1363,6 @@ namespace Intel8080Emulator
                         if ((x & 0x80) == 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
                         registers.Flags.P = Intel8080Emulator.Parity(x, 8);
                         if ((registers.A < registers.E)) registers.Flags.Cy = 1; else registers.Flags.Cy = 0; // Carry Flag
-                        registers.Pc++;
                         break;
 
                     case 0xbc: // CMP H
@@ -1317,7 +1371,6 @@ namespace Intel8080Emulator
                         if ((x & 0x80) == 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
                         registers.Flags.P = Intel8080Emulator.Parity(x, 8);
                         if ((registers.A < registers.H)) registers.Flags.Cy = 1; else registers.Flags.Cy = 0; // Carry Flag
-                        registers.Pc++;
                         break;
 
                     case 0xbd: // CMP L
@@ -1326,7 +1379,6 @@ namespace Intel8080Emulator
                         if ((x & 0x80) == 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
                         registers.Flags.P = Intel8080Emulator.Parity(x, 8);
                         if ((registers.A < registers.L)) registers.Flags.Cy = 1; else registers.Flags.Cy = 0; // Carry Flag
-                        registers.Pc++;
                         break;
 
                     case 0xbe: // CMP M (HL)
@@ -1336,7 +1388,6 @@ namespace Intel8080Emulator
                         if ((x & 0x80) == 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
                         registers.Flags.P = Intel8080Emulator.Parity(x, 8);
                         if ((registers.A < registers.memory[offset])) registers.Flags.Cy = 1; else registers.Flags.Cy = 0; // Carry Flag
-                        registers.Pc++;
                         break;
 
                     case 0xbf:  // CMP A
@@ -1344,7 +1395,6 @@ namespace Intel8080Emulator
                         registers.Flags.S = 0; // Sign Flag
                         registers.Flags.P = Intel8080Emulator.Parity(registers.A, 8);
                         registers.Flags.Cy = 0; // Carry Flag
-                        registers.Pc++;
                         break;
 
                     case 0xc0: //RNZ -> Return If Not Zero
@@ -1565,7 +1615,7 @@ namespace Intel8080Emulator
                         break;
 
                     case 0xd6: // SUI D8
-                        answer = (ushort)((ushort)registers.A - (ushort)opcode[2]); // Higher precision to capture carry out
+                        answer = (ushort)((ushort)registers.A - (ushort)opcode[1]); // Higher precision to capture carry out
                         if ((answer & (ushort)0xff) == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
                         if ((answer & (ushort)0x80) >= 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
                         if ((answer > (ushort)0xff)) registers.Flags.Cy = 1; else registers.Flags.Cy = 0; // Carry Flag
@@ -1624,7 +1674,7 @@ namespace Intel8080Emulator
                         break;
 
                     case 0xde: // SBI D8
-                        answer = (ushort)((ushort)registers.A - (ushort)opcode[2] - registers.Flags.Cy); // Higher precision to capture carry out
+                        answer = (ushort)((ushort)registers.A - (ushort)opcode[1] - registers.Flags.Cy); // Higher precision to capture carry out
                         if ((answer & (ushort)0xff) == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
                         if ((answer & (ushort)0x80) >= 0x80) registers.Flags.S = 1; else registers.Flags.S = 0; // Sign Flag
                         if ((answer > (ushort)0xff)) registers.Flags.Cy = 1; else registers.Flags.Cy = 0; // Carry Flag
@@ -1723,6 +1773,7 @@ namespace Intel8080Emulator
                     case 0xe9: // PCHL
                         registers.Pc = (ushort)(((ushort)registers.H) << 8);
                         registers.Pc = (ushort)(registers.Pc | (ushort)registers.L);
+                        registers.Pc--;
                         break;
 
                     case 0xea: // JPE adr
@@ -1778,7 +1829,7 @@ namespace Intel8080Emulator
                         break;
 
                     case 0xf0: // RP
-                        if (registers.Flags.P == 0)
+                        if (registers.Flags.P == 1)
                         {
                             registers.Pc = (ushort)((ushort)registers.memory[registers.Sp + 1] << 8 | (ushort)registers.memory[registers.Sp]);
                             registers.Sp += 2;
