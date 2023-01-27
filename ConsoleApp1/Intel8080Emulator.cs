@@ -3,6 +3,7 @@ using Intel8080Emulator.Exceptions;
 using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.Metrics;
 using System.Linq;
 using System.Reflection.Metadata.Ecma335;
 using System.Security.AccessControl;
@@ -55,16 +56,16 @@ namespace Intel8080Emulator
             }        
         }
 
-        public void MachineOut(byte port, byte value, Ports ports) // value of the port
+        public void MachineOut(byte port, Ports ports) // value of the port
         {
             switch (port)
             {
                 case 2: // shift offset
-                    ports.ShiftOffset = (byte)(value & 0x7); // bits 0, 1 and 2 define the offset
+                    ports.ShiftOffset = (byte)(ports.OutPorts[2] & 0x7); // bits 0, 1 and 2 define the offset
                     break;
                 case 4:
                     ports.Shift0 = ports.Shift1;
-                    ports.Shift1 = value;
+                    ports.Shift1 = ports.OutPorts[4];
                     break;
             }
         }
@@ -73,14 +74,84 @@ namespace Intel8080Emulator
         {
             switch (key)
             {
+                case U:
+                    ports.InPorts[0] |= 0x10; // Port 0 Fire
+                    break;
+                case J:
+                    ports.InPorts[0] |= 0x20; // Port 0 Left
+                    break;
+                case L:
+                    ports.InPorts[0] |= 0x40; // Port 0 Right
+                    break;
+                case 1:
+                    ports.InPorts[1] |= 0x01; // Credit
+                    break;
+                case L:
+                    ports.InPorts[1] |= 0x02; // 2P START
+                    break;
+                case ENTER:
+                    ports.InPorts[1] |= 0x04; // 1P START
+                    break;
+                case D:
+                    ports.InPorts[1] |= 0x10; // 1P SHOT
+                    break;
                 case LEFT:
-                    ports.InPorts[0] |= 0x20;   // Bit 5 must be set. |= is an OR
+                    ports.InPorts[1] |= 0x20; // 1P LEFT
                     break;
                 case RIGHT:
-                    ports.InPorts[1] |= 0x40;   // Bit 6 must be set
+                    ports.InPorts[1] |= 0x40; // 1P RIGHT
                     break;
-
+                case N:
+                    ports.InPorts[2] |= 0x10; // 2P SHOT
+                    break;
+                case O:
+                    ports.InPorts[2] |= 0x20; // 2P LEFT
+                    break;
+                case P:
+                    ports.InPorts[2] |= 0x40; // 2P RIGHT
+                    break;
             }
+        }
+
+        public void MachineKeyUp(char key, Ports ports)
+        {
+            switch (key):
+                case U:
+                    ports.InPorts[0] &= 0xEF; // Port 0 Fire
+                    break;
+                case J:
+                    ports.InPorts[0] &= 0xDF; // Port 0 Left
+                    break;
+                case L:
+                    ports.InPorts[0] &= 0xBF // Port 0 Right
+                    break;
+                case 1:
+                    ports.InPorts[1] &= 0xFE; // Credit
+                    break;
+                case L:
+                    ports.InPorts[1] &= 0xFD; // 2P START
+                    break;
+                case ENTER:
+                    ports.InPorts[1] &= 0xFB; // 1P START
+                    break;                   
+                case D:
+                    ports.InPorts[1] &= 0xEF;
+                    break;
+                case LEFT:
+                    ports.InPorts[1] &= 0xDF;   
+                    break;
+                case RIGHT:
+                    ports.InPorts[1] &= 0xBF;   
+                    break;
+                case N:
+                    ports.InPorts[2] &|= 0xEF; // 2P SHOT
+                    break;
+                case O:
+                    ports.InPorts[2] &= 0xDF; // 2P LEFT
+                    break;
+                case P:
+                    ports.InPorts[2] &= 0xBF; // 2P RIGHT
+                    break;
         }
 
         public void ReadTestRom()
@@ -156,15 +227,15 @@ namespace Intel8080Emulator
                 fixed (byte* opcode = &registers.memory[registers.Pc])
                     if (registers.memory[registers.Pc] == 0xdb) // IN INSTRUCTION
                     {
-                        ushort port = (registers.memory[registers.Pc + 1]);
-                        registers.A = this.MachineIn(registers, port);
-                        registers.Pc+=2;
+                        byte port = (registers.memory[registers.Pc + 1]);
+                        this.MachineIn(registers, port, ports);
+                        registers.Pc++;
                     }
                     else if (registers.memory[registers.Pc] == 0xd3) // OUT INSTRUCTION
                     {
-                        ushort port = (registers.memory[registers.Pc + 1]);
-                        this.MachineOut(registers, port);
-                        registers.Pc+=2;
+                        byte port = (registers.memory[registers.Pc + 1]);
+                        this.MachineOut(port, ports);
+                        registers.Pc++;
                     }
                     else
                     {

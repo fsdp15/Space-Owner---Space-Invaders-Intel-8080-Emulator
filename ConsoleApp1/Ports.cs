@@ -20,5 +20,20 @@ namespace Intel8080Emulator
         public byte Shift0 { get => shift0; set => shift0 = value; }
         public byte[] InPorts { get => inPorts; set => inPorts = value; }
         public byte[] OutPorts { get => outPorts; set => outPorts = value; }
+
+        public Ports()
+        {
+            this.inPorts[0] = 0x0E; // http://computerarcheology.com/Arcade/SpaceInvaders/Hardware.html
+            this.inPorts[1] = 0x08;
+            this.inPorts[2] = 0x00;
+            this.inPorts[3] = 0x00;
+            this.outPorts[0] = 0x00;
+            this.outPorts[1] = 0x00;
+            this.outPorts[2] = 0x00;
+            this.outPorts[3] = 0x00;
+            this.outPorts[4] = 0x00;
+            this.outPorts[5] = 0x00;
+            this.outPorts[6] = 0x00;
+        }
     }
 }
