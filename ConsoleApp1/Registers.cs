@@ -17,7 +17,7 @@ namespace Intel8080Emulator
         byte l;
         ushort sp;
         ushort pc;
-        public byte[] memory; //16K
+        public byte[] memory; //16K // Encapsulate to not allow write before address 0x2000 or after address 0x4000
         Flags flags;
         byte int_enable;
 
@@ -25,7 +25,7 @@ namespace Intel8080Emulator
         {
             this.Flags = new Flags();
             this.memory = new byte[0x10000]; // 16k of memory
-
+            this.Int_enable = 1;
         }
 
         public byte A { get => a; set => a = value; }
@@ -38,5 +38,6 @@ namespace Intel8080Emulator
         public ushort Pc { get => pc; set => pc = value; }
         public ushort Sp { get => sp; set => sp = value; }
         public Flags Flags { get => flags; set => flags = value; }
-        public byte Int_enable { get => int_enable; set => int_enable = value; }    }
+        public byte Int_enable { get => int_enable; set => int_enable = value; }
+    }
 }

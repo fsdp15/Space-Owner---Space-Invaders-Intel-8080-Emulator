@@ -3,6 +3,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Data.SqlTypes;
+using System.IO;
 using System.Linq;
 using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
@@ -17,27 +18,29 @@ namespace ConsoleApp1
 
         public Disassembler()
         {
-            instructionSet = new();
-            instructionSet.populateOpDictionary();
+            InstructionSet = new();
+            InstructionSet.populateOpDictionary();
         }
+
+        public InstructionSet InstructionSet { get => instructionSet; set => instructionSet = value; }
 
         public void Disassemble8080Op(byte* codebuffer, UInt16 pc, StringBuilder disassembly)
         {
 
-          //  disassembly.Append(pc.ToString("{0:X4}"));
+            //  disassembly.Append(pc.ToString("{0:X4}"));
             disassembly.Append(String.Format("0x{0:X}", pc.ToString("X4")));
             disassembly.Append("    ");
 
-         //   Console.WriteLine("");
-            
-            disassembly.Append(instructionSet.opDictionary[codebuffer[pc]].Instruction);
+            //   Console.WriteLine("");
 
-            if (instructionSet.opDictionary[codebuffer[pc]].OpSize == 2)
+            disassembly.Append(InstructionSet.opDictionary[codebuffer[pc]].Instruction);
+
+            if (InstructionSet.opDictionary[codebuffer[pc]].OpSize == 2)
             {
                 disassembly.Append(",");
-                disassembly.Append(codebuffer[pc+(UInt16)1].ToString("X2"));
+                disassembly.Append(codebuffer[pc + (UInt16)1].ToString("X2"));
             }
-            else if (instructionSet.opDictionary[codebuffer[pc]].OpSize == 3)
+            else if (InstructionSet.opDictionary[codebuffer[pc]].OpSize == 3)
             {
                 disassembly.Append(", ");
                 disassembly.Append(codebuffer[pc + (UInt16)2].ToString("X2"));
@@ -45,7 +48,7 @@ namespace ConsoleApp1
                 disassembly.Append(codebuffer[pc + (UInt16)1].ToString("X2"));
             }
 
-          //  Console.WriteLine("");
+            //  Console.WriteLine("");
             disassembly.Append("\n");
         }
 
@@ -59,10 +62,10 @@ namespace ConsoleApp1
 
             for (int i = 0; i < romObj.Length; i++)
             {
-                codeBuffer[i] = (byte) romObj.ReadByte();
+                codeBuffer[i] = (byte)romObj.ReadByte();
             }
 
-          //  Console.WriteLine("");
+            //  Console.WriteLine("");
 
             UInt16 pc = 0;
 
@@ -71,7 +74,7 @@ namespace ConsoleApp1
                 while (pc < romObj.Length)
                 {
                     this.Disassemble8080Op(opcode, pc, disassembly);
-                    pc = (UInt16)(pc + (UInt16)instructionSet.opDictionary[codeBuffer[pc]].OpSize);
+                    pc = (UInt16)(pc + (UInt16)InstructionSet.opDictionary[codeBuffer[pc]].OpSize);
 
                 }
 

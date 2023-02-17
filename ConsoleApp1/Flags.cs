@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Intel8080Emulator
 {
-    public class Flags 
+    public class Flags
     {
         byte z; // Zero bit
         byte s; // Sign bit

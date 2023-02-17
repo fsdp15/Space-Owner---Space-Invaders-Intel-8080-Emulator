@@ -1,14 +1,10 @@
 ﻿using ConsoleApp1;
 using Intel8080Emulator.Exceptions;
-using Microsoft.Win32;
 using System;
-using System.Collections.Generic;
-using System.Diagnostics.Metrics;
-using System.Linq;
-using System.Reflection.Metadata.Ecma335;
-using System.Security.AccessControl;
+using System.IO;
 using System.Text;
-using System.Threading.Tasks;
+using System.Windows.Input;
+using System.Diagnostics;
 
 namespace Intel8080Emulator
 {
@@ -16,7 +12,7 @@ namespace Intel8080Emulator
     {
         private StringBuilder emulationLog;
         private Disassembler disassembler;
-
+        private Ports ports;
 
 
 
@@ -26,6 +22,7 @@ namespace Intel8080Emulator
         {
             emulationLog = new();
             disassembler = new();
+            ports = new();
         }
 
         public void ProcessorState(Registers registers)
@@ -40,123 +37,238 @@ namespace Intel8080Emulator
                 "H: $0x{5:X}; L: $0x{6:X}; SP: $0x{7:X}\n", registers.A.ToString("X2"), registers.B.ToString("X2"),
                 registers.C.ToString("X2"), registers.D.ToString("X2"), registers.E.ToString("X2"), registers.H.ToString("X2"),
                 registers.L.ToString("X2"), registers.Sp.ToString("X4")));
+            emulationLog.Append("\n");
             Console.WriteLine();
         }
 
-        public void MachineIn(Registers registers, byte port, Ports ports)
+        public void MachineIn(Registers registers, byte port)
         {
             switch (port)
             {
                 case 3: // Read shift data
-                    ushort aux = (ushort)((ushort)(ports.Shift1 << 8) | (ushort)ports.Shift0);
-                    ports.InPorts[3] = (byte)((aux >> (8 - ports.ShiftOffset)) & 0x00ff);
+                    ushort aux = (ushort)((ushort)(this.ports.Shift1 << 8) | (ushort)this.ports.Shift0);
+                    this.ports.InPorts[3] = (byte)((aux >> (8 - this.ports.ShiftOffset)) & 0x00ff);
                     break;
                 default:
                     return;
-            }        
+            }
         }
 
-        public void MachineOut(byte port, Ports ports) // value of the port
+        public void MachineOut(byte port) // value of the port
         {
             switch (port)
             {
                 case 2: // shift offset
-                    ports.ShiftOffset = (byte)(ports.OutPorts[2] & 0x7); // bits 0, 1 and 2 define the offset
+                    this.ports.ShiftOffset = (byte)(this.ports.OutPorts[2] & 0x7); // bits 0, 1 and 2 define the offset
                     break;
                 case 4:
-                    ports.Shift0 = ports.Shift1;
-                    ports.Shift1 = ports.OutPorts[4];
+                    this.ports.Shift0 = this.ports.Shift1;
+                    this.ports.Shift1 = this.ports.OutPorts[4];
                     break;
             }
         }
 
-        public void MachineKeyDown(char key, Ports ports)
+        // Add to xaml a key down event
+    /*   private void PlatformKeyDown(object sender, KeyEventArgs e)
+        {
+            switch (e.Key)
+            {
+                case Key.U:
+                    this.MachineKeyDown(1);
+                    break;
+                case Key.J:
+                    this.MachineKeyDown(2); // Port 0 Left
+                    break;
+                case Key.L:
+                    this.MachineKeyDown(3); // Port 0 Right
+                    break;
+                case Key.F1:
+                    this.MachineKeyDown(4); // Credit
+                    break;
+                case Key.RightCtrl:
+                    this.MachineKeyDown(5); // 2P START
+                    break;
+                case Key.Enter:
+                    this.MachineKeyDown(6); // 1P START
+                    break;
+                case Key.D:
+                    this.MachineKeyDown(7); // 1P SHOT
+                    break;
+                case Key.Left:
+                    this.MachineKeyDown(8); // 1P LEFT
+                    break;
+                case Key.Right:
+                    this.MachineKeyDown(9); // 1P RIGHT
+                    break;
+                case Key.N:
+                    this.MachineKeyDown(10); // 2P SHOT
+                    break;
+                case Key.O:
+                    this.MachineKeyDown(11); // 2P LEFT
+                    break;
+                case Key.P:
+                    this.MachineKeyDown(12); // 2P RIGHT
+                    break;
+            }
+        }
+
+        // Add to xaml a key up event
+        private void PlatformKeyUp(object sender, KeyEventArgs e)
+        {
+            switch (e.Key)
+            {
+                case Key.U:
+                    this.MachineKeyUp(1);
+                    break;
+                case Key.J:
+                    this.MachineKeyUp(2); // Port 0 Left
+                    break;
+                case Key.L:
+                    this.MachineKeyUp(3); // Port 0 Right
+                    break;
+                case Key.F1:
+                    this.MachineKeyUp(4); // Credit
+                    break;
+                case Key.RightCtrl:
+                    this.MachineKeyUp(5); // 2P START
+                    break;
+                case Key.Enter:
+                    this.MachineKeyUp(6); // 1P START
+                    break;
+                case Key.D:
+                    this.MachineKeyUp(7); // 1P SHOT
+                    break;
+                case Key.Left:
+                    this.MachineKeyUp(8); // 1P LEFT
+                    break;
+                case Key.Right:
+                    this.MachineKeyUp(9); // 1P RIGHT
+                    break;
+                case Key.N:
+                    this.MachineKeyUp(10); // 2P SHOT
+                    break;
+                case Key.O:
+                    this.MachineKeyUp(11); // 2P LEFT
+                    break;
+                case Key.P:
+                    this.MachineKeyUp(12); // 2P RIGHT
+                    break;
+            }
+        } */
+
+        public void MachineKeyDown(int key)
         {
             switch (key)
             {
-                case U:
-                    ports.InPorts[0] |= 0x10; // Port 0 Fire
-                    break;
-                case J:
-                    ports.InPorts[0] |= 0x20; // Port 0 Left
-                    break;
-                case L:
-                    ports.InPorts[0] |= 0x40; // Port 0 Right
-                    break;
                 case 1:
-                    ports.InPorts[1] |= 0x01; // Credit
+                    this.ports.InPorts[0] |= 0x10; // Port 0 Fire
                     break;
-                case L:
-                    ports.InPorts[1] |= 0x02; // 2P START
+                case 2:
+                    this.ports.InPorts[0] |= 0x20; // Port 0 Left
                     break;
-                case ENTER:
-                    ports.InPorts[1] |= 0x04; // 1P START
+                case 3:
+                    this.ports.InPorts[0] |= 0x40; // Port 0 Right
                     break;
-                case D:
-                    ports.InPorts[1] |= 0x10; // 1P SHOT
+                case 4:
+                    this.ports.InPorts[1] |= 0x01; // Credit
                     break;
-                case LEFT:
-                    ports.InPorts[1] |= 0x20; // 1P LEFT
+                case 5:
+                    this.ports.InPorts[1] |= 0x02; // 2P START
                     break;
-                case RIGHT:
-                    ports.InPorts[1] |= 0x40; // 1P RIGHT
+                case 6:
+                    this.ports.InPorts[1] |= 0x04; // 1P START
                     break;
-                case N:
-                    ports.InPorts[2] |= 0x10; // 2P SHOT
+                case 7:
+                    this.ports.InPorts[1] |= 0x10; // 1P SHOT
                     break;
-                case O:
-                    ports.InPorts[2] |= 0x20; // 2P LEFT
+                case 8:
+                    this.ports.InPorts[1] |= 0x20; // 1P LEFT
                     break;
-                case P:
-                    ports.InPorts[2] |= 0x40; // 2P RIGHT
+                case 9:
+                    this.ports.InPorts[1] |= 0x40; // 1P RIGHT
+                    break;
+                case 10:
+                    this.ports.InPorts[2] |= 0x10; // 2P SHOT
+                    break;
+                case 11:
+                    this.ports.InPorts[2] |= 0x20; // 2P LEFT
+                    break;
+                case 12:
+                    this.ports.InPorts[2] |= 0x40; // 2P RIGHT
                     break;
             }
         }
 
-        public void MachineKeyUp(char key, Ports ports)
+
+
+        public void MachineKeyUp(int key)
         {
-            switch (key):
-                case U:
-                    ports.InPorts[0] &= 0xEF; // Port 0 Fire
-                    break;
-                case J:
-                    ports.InPorts[0] &= 0xDF; // Port 0 Left
-                    break;
-                case L:
-                    ports.InPorts[0] &= 0xBF // Port 0 Right
-                    break;
+            switch (key)
+            {
                 case 1:
-                    ports.InPorts[1] &= 0xFE; // Credit
+                    this.ports.InPorts[0] &= 0xEF; // Port 0 Fire
                     break;
-                case L:
-                    ports.InPorts[1] &= 0xFD; // 2P START
+                case 2:
+                    this.ports.InPorts[0] &= 0xDF; // Port 0 Left
                     break;
-                case ENTER:
-                    ports.InPorts[1] &= 0xFB; // 1P START
-                    break;                   
-                case D:
-                    ports.InPorts[1] &= 0xEF;
+                case 3:
+                    this.ports.InPorts[0] &= 0xBF; // Port 0 Right
                     break;
-                case LEFT:
-                    ports.InPorts[1] &= 0xDF;   
+                case 4:
+                    this.ports.InPorts[1] &= 0xFE; // Credit
                     break;
-                case RIGHT:
-                    ports.InPorts[1] &= 0xBF;   
+                case 5:
+                    this.ports.InPorts[1] &= 0xFD; // 2P START
                     break;
-                case N:
-                    ports.InPorts[2] &|= 0xEF; // 2P SHOT
+                case 6:
+                    this.ports.InPorts[1] &= 0xFB; // 1P START
                     break;
-                case O:
-                    ports.InPorts[2] &= 0xDF; // 2P LEFT
+                case 7:
+                    this.ports.InPorts[1] &= 0xEF;
                     break;
-                case P:
-                    ports.InPorts[2] &= 0xBF; // 2P RIGHT
+                case 8:
+                    this.ports.InPorts[1] &= 0xDF;
                     break;
+                case 9:
+                    this.ports.InPorts[1] &= 0xBF;
+                    break;
+                case 10:
+                    this.ports.InPorts[2] &= 0xEF; // 2P SHOT
+                    break;
+                case 11:
+                    this.ports.InPorts[2] &= 0xDF; // 2P LEFT
+                    break;
+                case 12:
+                    this.ports.InPorts[2] &= 0xBF; // 2P RIGHT
+                    break;
+            }
         }
+
+
+
+        public void GenerateInterrupt(Registers registers, int interruptNum)
+        {
+            Push(registers, (byte)((registers.Pc & 0xFF00) >> 8), (byte)(registers.Pc & 0xff));
+            Console.WriteLine();
+            registers.Pc = (ushort)(8 * interruptNum);
+
+            registers.Int_enable = 0;
+        }
+
+        private static void Push(Registers registers, byte A, byte B)
+        {
+            // sp-2 = b, sp-1 = A, sp = sp -2
+            registers.memory[registers.Sp - 2] = B;
+            registers.memory[registers.Sp - 1] = A;
+            registers.Sp -= 2;
+            Console.WriteLine();
+        }
+
+
 
         public void ReadTestRom()
         {
-            FileStream romObj = new FileStream("C:\\Users\\felip\\OneDrive\\Desktop\\Emulator\\invaders\\cpudiag.bin", FileMode.Open, FileAccess.Read); //change to argv
+            FileStream romObj = new FileStream(AppDomain.CurrentDomain.BaseDirectory + "ROM\\cpudiag.bin", FileMode.Open, FileAccess.Read); //change to argv
 
             romObj.Seek(0, SeekOrigin.Begin);
             Registers registers = new();
@@ -200,16 +312,20 @@ namespace Intel8080Emulator
                 }
                 emulationLog.Clear();
             }
+            Console.WriteLine();
         }
 
         public void ReadRom()
         {
-            FileStream romObj = new FileStream("C:\\Users\\felip\\OneDrive\\Desktop\\Emulator\\invaders\\invaders", FileMode.Open, FileAccess.Read); //change to argv
+            //FileStream romObj = new FileStream("C:\\Users\\felip\\OneDrive\\Desktop\\Emulator\\invaders\\invaders", FileMode.Open, FileAccess.Read); //change to argv
+            Console.WriteLine("a");
+            FileStream romObj = new FileStream(AppDomain.CurrentDomain.BaseDirectory + "ROM\\invaders", FileMode.Open, FileAccess.Read); //change to argv
+
             romObj.Seek(0, SeekOrigin.Begin);
             Registers registers = new(); // Move to scope of the class
             registers.Pc = 0;
 
-            Ports ports = new(); // Move to scope of the class
+
 
             Console.WriteLine();
 
@@ -220,27 +336,78 @@ namespace Intel8080Emulator
 
             Console.WriteLine();
 
+            var time = new Stopwatch();
+            double lastTimer = 0.0;
+            double nextInterruptTime = 0.0;
+            byte whichInterrupt = 1;
+            time.Start();
+
             while (1 == 1)
             {
                 Console.WriteLine();
 
-                fixed (byte* opcode = &registers.memory[registers.Pc])
-                    if (registers.memory[registers.Pc] == 0xdb) // IN INSTRUCTION
+                if (lastTimer == 0.0)
+                {
+                    Console.WriteLine();
+                    lastTimer = time.Elapsed.TotalMilliseconds;
+                    nextInterruptTime = lastTimer + 16.0;
+                    whichInterrupt = 1;
+                }
+
+                if (registers.Int_enable == 1 && time.Elapsed.TotalMilliseconds > nextInterruptTime)
+                {
+                    if (whichInterrupt == 1)
                     {
-                        byte port = (registers.memory[registers.Pc + 1]);
-                        this.MachineIn(registers, port, ports);
-                        registers.Pc++;
-                    }
-                    else if (registers.memory[registers.Pc] == 0xd3) // OUT INSTRUCTION
-                    {
-                        byte port = (registers.memory[registers.Pc + 1]);
-                        this.MachineOut(port, ports);
-                        registers.Pc++;
+                        Console.WriteLine();
+                        this.GenerateInterrupt(registers, 1); // Interrupt 1        
+                        whichInterrupt = 2;
                     }
                     else
                     {
-                        this.Emulate8080Op(registers);
+
+                        Console.WriteLine();
+                        this.GenerateInterrupt(registers, 2); // Interrupt 2, Middle of frame    
+                        whichInterrupt = 1;
                     }
+                    nextInterruptTime = time.Elapsed.TotalMilliseconds + 8.0;
+                }
+
+                Console.WriteLine();
+
+                // CPU = 2Mhz = 2000000 cycle/second
+                double sinceLast = time.Elapsed.TotalMilliseconds - lastTimer;
+                int cyclesLeft = (int)(2000 * sinceLast); // Time is in miliseconds, so 2000 * time = 2MHz
+                int cycles = 0;
+                Console.WriteLine();
+
+                emulationLog.Append("Cycles: "); emulationLog.Append(cycles.ToString()); emulationLog.Append("\n");
+                emulationLog.Append("cyclesLeft: "); emulationLog.Append(cyclesLeft.ToString()); emulationLog.Append("\n");
+
+                while (cyclesLeft > cycles)
+                {
+                    Console.WriteLine();
+                    fixed (byte* opcode = &registers.memory[registers.Pc])
+                        if (registers.memory[registers.Pc] == 0xdb) // IN INSTRUCTION
+                        {
+                            byte port = (registers.memory[registers.Pc + 1]);
+                            this.MachineIn(registers, port);
+                            registers.Pc += 2;
+                            cycles += 3;
+                        }
+                        else if (registers.memory[registers.Pc] == 0xd3) // OUT INSTRUCTION
+                        {
+                            byte port = (registers.memory[registers.Pc + 1]);
+                            this.MachineOut(port);
+                            registers.Pc += 2;
+                            cycles += 3;
+                        }
+                        else
+                        {
+                            cycles += this.Emulate8080Op(registers);
+                        }
+                }
+
+                lastTimer = time.Elapsed.TotalMilliseconds;
 
                 Console.WriteLine();
 
@@ -274,7 +441,7 @@ namespace Intel8080Emulator
                 Console.WriteLine("");
                 return 0;
             };
-        } 
+        }
 
         public int Emulate8080Op(Registers registers)
         {
@@ -287,11 +454,13 @@ namespace Intel8080Emulator
                 byte psw;
                 UInt32 aux1;
                 UInt32 aux2;
+                int cycleCount;
 
                 Console.WriteLine();
                 fixed (byte* codebuffer = &registers.memory[0])
                 {
                     disassembler.Disassemble8080Op(codebuffer, registers.Pc, emulationLog);
+                    cycleCount = disassembler.InstructionSet.opDictionary[codebuffer[registers.Pc]].CycleCount;
                 }
                 Console.WriteLine();
                 emulationLog.Append(String.Format("Opcode: $0x{0:X}\n", opcode[0].ToString("X2")));
@@ -334,7 +503,7 @@ namespace Intel8080Emulator
 
                     case 0x06: // MVI B, D8 -- B <- byte 2
                         registers.B = opcode[1];
-                        registers.Pc++;                 
+                        registers.Pc++;
                         break;
 
                     case 0x07: // RLC
@@ -397,7 +566,7 @@ namespace Intel8080Emulator
 
                     case 0x11: // 	LXI D,D16 -- D <- byte 3, E <- byte 2
                         registers.E = opcode[1];
-                        registers.D = opcode[2];                 
+                        registers.D = opcode[2];
                         registers.Pc += 2;
                         break;
 
@@ -411,7 +580,7 @@ namespace Intel8080Emulator
                         registers.D = (byte)((answer & 0xff00) >> 8);
                         registers.E = (byte)((answer & 0x00ff));
                         break;
-                         
+
                     case 0x14:  // 	INR D
                         registers.D++;
                         if ((registers.D & 0xff) == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
@@ -496,7 +665,7 @@ namespace Intel8080Emulator
                         registers.H = opcode[2];
                         registers.Pc += 2;
                         break;
-                         
+
                     case 0x22:  // SHLD adr
                         registers.memory[((ushort)opcode[2] << 8) | (ushort)opcode[1]] = registers.L;
                         registers.memory[(((ushort)opcode[2] << 8) | (ushort)opcode[1]) + 1] = registers.H;
@@ -538,7 +707,7 @@ namespace Intel8080Emulator
 
                     case 0x29: //DAD H -> HL = HL + HL
                         aux1 = (UInt32)(((UInt32)registers.H << 8) | ((UInt32)registers.L)); // 32 bits variable to hold carry flag
-                        aux2 = ((UInt32) aux1) << 1; // Adding HL to HL has the same effect of << 1
+                        aux2 = ((UInt32)aux1) << 1; // Adding HL to HL has the same effect of << 1
                         if ((aux2 > (UInt32)0xffff)) registers.Flags.Cy = 1; else registers.Flags.Cy = 0; // Carry Flag
                         aux2 = (ushort)(aux2 & (ushort)0xffff); // Returning to 16 bits
                         registers.H = ((byte)((ushort)(aux2 & 0xff00) >> 8));
@@ -666,7 +835,7 @@ namespace Intel8080Emulator
                         registers.Flags.Cy = (byte)~registers.Flags.Cy;
                         break;
 
-                    case 0x40: 
+                    case 0x40:
                         registers.B = registers.B;
                         break;
 
@@ -946,7 +1115,7 @@ namespace Intel8080Emulator
                         if ((answer > (ushort)0xff)) registers.Flags.Cy = 1; else registers.Flags.Cy = 0; // Carry Flag
                         registers.Flags.P = Intel8080Emulator.Parity((byte)(answer & (ushort)0xff), 8);
                         registers.A = (byte)(answer & (ushort)0xff); // Returning to 8 bits
-                        break; 
+                        break;
 
                     case 0x83: // ADD E
                         answer = (ushort)((ushort)registers.A + (ushort)registers.E); // Higher precision to capture carry out
@@ -1326,7 +1495,7 @@ namespace Intel8080Emulator
                         break;
 
                     case 0xae: // XRA M (HL)
-                        registers.A = (byte)(registers.A ^ (registers.memory[((ushort)registers.H << 8) | (ushort)registers.L]));                   
+                        registers.A = (byte)(registers.A ^ (registers.memory[((ushort)registers.H << 8) | (ushort)registers.L]));
                         if ((registers.A & (ushort)0xff) == 0) registers.Flags.Z = 1; else registers.Flags.Z = 0; // Zero Flag
                         registers.Flags.P = Intel8080Emulator.Parity(registers.A, 8);
                         registers.Flags.Cy = 0;
@@ -1609,7 +1778,8 @@ namespace Intel8080Emulator
                             System.Environment.Exit(1);
                         }
 
-                        else {
+                        else
+                        {
 
                             ret = (ushort)(registers.Pc + 2);
                             registers.memory[registers.Sp - 1] = (byte)((ret >> 8) & 0xff);
@@ -1791,8 +1961,8 @@ namespace Intel8080Emulator
                         registers.L = registers.memory[registers.Sp];
                         registers.memory[registers.Sp] = (byte)aux1;
                         aux2 = registers.H;
-                        registers.H = registers.memory[registers.Sp+1];
-                        registers.memory[registers.Sp+1] = (byte)aux2;
+                        registers.H = registers.memory[registers.Sp + 1];
+                        registers.memory[registers.Sp + 1] = (byte)aux2;
                         break;
 
                     case 0xe4: // CPO Adr
@@ -2034,7 +2204,7 @@ namespace Intel8080Emulator
 
                 registers.Pc += (ushort)1;
                 this.ProcessorState(registers);
-                return 1;
+                return cycleCount;
             }
         }
     }
