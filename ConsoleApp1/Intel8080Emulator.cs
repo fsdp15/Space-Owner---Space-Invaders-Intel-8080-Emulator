@@ -306,7 +306,7 @@ namespace Intel8080Emulator
 
                 Console.WriteLine();
 
-                using (System.IO.StreamWriter file = File.AppendText("C:\\Users\\felip\\OneDrive\\Desktop\\Emulator\\invaders\\testDebug.txt"))
+                using (System.IO.StreamWriter file = File.AppendText("C:\\Users\\felipedotti\\Desktop\\SpaceInvadersProject\\testDebug.txt"))
                 {
                     file.WriteLine(emulationLog.ToString());
                 }
@@ -411,7 +411,7 @@ namespace Intel8080Emulator
 
                 Console.WriteLine();
 
-                using (System.IO.StreamWriter file = File.AppendText("C:\\Users\\felip\\OneDrive\\Desktop\\Emulator\\invaders\\invadersDebug.txt"))
+                using (System.IO.StreamWriter file = File.AppendText("C:\\Users\\felipedotti\\Desktop\\SpaceInvadersProject\\invadersDebug.txt"))
                 {
                     file.WriteLine(emulationLog.ToString());
                 }
