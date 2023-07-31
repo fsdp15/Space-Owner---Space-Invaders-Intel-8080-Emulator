@@ -28,35 +28,40 @@ namespace ConsoleApp1
         {
 
             //  disassembly.Append(pc.ToString("{0:X4}"));
-            disassembly.Append(String.Format("0x{0:X}", pc.ToString("X4")));
+          /*  disassembly.Append(String.Format("0x{0:X}", pc.ToString("X4")));
             disassembly.Append("    ");
+            disassembly.Append("    "); */
 
             //   Console.WriteLine("");
 
-            disassembly.Append(InstructionSet.opDictionary[codebuffer[pc]].Instruction);
+           // disassembly.Append(InstructionSet.opDictionary[codebuffer[pc]].Instruction);
 
             if (InstructionSet.opDictionary[codebuffer[pc]].OpSize == 2)
             {
-                disassembly.Append(",");
-                disassembly.Append(codebuffer[pc + (UInt16)1].ToString("X2"));
+               // disassembly.Append(",");
+                //disassembly.Append(codebuffer[pc + (UInt16)1].ToString("X2"));
             }
             else if (InstructionSet.opDictionary[codebuffer[pc]].OpSize == 3)
             {
-                disassembly.Append(", ");
-                disassembly.Append(codebuffer[pc + (UInt16)2].ToString("X2"));
-                disassembly.Append(", ");
-                disassembly.Append(codebuffer[pc + (UInt16)1].ToString("X2"));
+                //disassembly.Append(", ");
+               // disassembly.Append(codebuffer[pc + (UInt16)2].ToString("X2"));
+               // disassembly.Append(", ");
+                //disassembly.Append(codebuffer[pc + (UInt16)1].ToString("X2"));
             }
 
-            //  Console.WriteLine("");
-            disassembly.Append("\n");
+			//  Console.WriteLine("");
+			//disassembly.Append(", ");
+            //disassembly.Append("Cycle count: " + InstructionSet.opDictionary[codebuffer[pc]].CycleCount);
+
+			//disassembly.Append("\n");
+
         }
 
         public void ReadRom()
         {
             StringBuilder disassembly = new();
             // This should be static...
-            FileStream romObj = new FileStream("C:\\Users\\felip\\OneDrive\\Desktop\\Emulator\\invaders\\invaders", FileMode.Open, FileAccess.Read); //change to argv
+            FileStream romObj = new FileStream("C:\\Users\\felip\\Documents\\git\\SpaceInvaders8080Emulator\\ConsoleApp1\\ROM\\invaders", FileMode.Open, FileAccess.Read); //change to argv
             romObj.Seek(0, SeekOrigin.Begin);
             byte[] codeBuffer = new byte[romObj.Length];
 
@@ -78,15 +83,15 @@ namespace ConsoleApp1
 
                 }
 
-                Console.WriteLine("");
+                //Console.WriteLine("");
 
             }
 
-            Console.WriteLine("");
+            //Console.WriteLine("");
 
-            using (System.IO.StreamWriter file = new System.IO.StreamWriter("C:\\Users\\felip\\OneDrive\\Desktop\\Emulator\\invaders\\invadersDump.txt"))
+            using (System.IO.StreamWriter file = new System.IO.StreamWriter("C:\\Users\\felip\\Documents\\git\\SpaceInvaders8080Emulator\\ConsoleApp1\\DebugLogs\\invadersDump.txt"))
             {
-                file.WriteLine(disassembly.ToString()); // "sb" is the StringBuilder
+                //file.WriteLine(disassembly.ToString()); // "sb" is the StringBuilder
             }
         }
 
