@@ -33,7 +33,7 @@ namespace Intel8080Emulator
         {
 
             //Console.WriteLine();
-           /* emulationLog.Append("Carry flag: "); emulationLog.Append(registers.Flags.Cy.ToString()); emulationLog.Append("\n");
+            emulationLog.Append("Carry flag: "); emulationLog.Append(registers.Flags.Cy.ToString()); emulationLog.Append("\n");
             emulationLog.Append("Parity flag: "); emulationLog.Append(registers.Flags.P.ToString()); emulationLog.Append("\n");
             emulationLog.Append("Sign flag: "); emulationLog.Append(registers.Flags.S.ToString()); emulationLog.Append("\n");
             emulationLog.Append("Zero flag: "); emulationLog.Append(registers.Flags.Z.ToString()); emulationLog.Append("\n");
@@ -42,7 +42,7 @@ namespace Intel8080Emulator
                 "H: $0x{5:X}; L: $0x{6:X}; SP: $0x{7:X}\n", registers.A.ToString("X2"), registers.B.ToString("X2"),
                 registers.C.ToString("X2"), registers.D.ToString("X2"), registers.E.ToString("X2"), registers.H.ToString("X2"),
                 registers.L.ToString("X2"), registers.Sp.ToString("X4")));
-            emulationLog.Append("\n"); */
+            emulationLog.Append("\n"); 
 			//Console.WriteLine(); 
 		}
 
@@ -274,8 +274,8 @@ namespace Intel8080Emulator
         public void Push(Registers registers, byte A, byte B)
         {
 			//Console.WriteLine();
-			//emulationLog.Append("Zero flag: "); emulationLog.Append(registers.Flags.Z.ToString()); emulationLog.Append("\n");
-			//emulationLog.Append("Zero flag: "); emulationLog.Append(registers.Flags.Z.ToString()); emulationLog.Append("\n");
+			emulationLog.Append("Zero flag: "); emulationLog.Append(registers.Flags.Z.ToString()); emulationLog.Append("\n");
+			emulationLog.Append("Zero flag: "); emulationLog.Append(registers.Flags.Z.ToString()); emulationLog.Append("\n");
 			// sp-2 = b, sp-1 = A, sp = sp -2
 			registers.memory[registers.Sp - 2] = B;
             registers.memory[registers.Sp - 1] = A;
@@ -329,7 +329,7 @@ namespace Intel8080Emulator
 
                 using (System.IO.StreamWriter file = File.AppendText("C:\\Users\\felip\\Documents\\git\\SpaceInvaders8080Emulator\\ConsoleApp1\\DebugLogs\\testDebug.txt"))
                 {
-                    //file.WriteLine(emulationLog.ToString());
+                    file.WriteLine(emulationLog.ToString());
                 }
                 emulationLog.Clear();
             }
@@ -376,23 +376,23 @@ namespace Intel8080Emulator
 
                 //	Console.WriteLine("next interrupt: " + nextInterruptTime);
 				//Console.WriteLine("time elapsed " + time.Elapsed.TotalMilliseconds);
-				//emulationLog.Append("next interrupt: " + nextInterruptTime); emulationLog.Append("\n");
-				//emulationLog.Append("time elapsed " + time.Elapsed.TotalMilliseconds); emulationLog.Append("\n");
+				emulationLog.Append("next interrupt: " + nextInterruptTime); emulationLog.Append("\n");
+				emulationLog.Append("time elapsed " + time.Elapsed.TotalMilliseconds); emulationLog.Append("\n");
 
 				if (registers.Int_enable == 1 && time.Elapsed.TotalMilliseconds > nextInterruptTime)
                 {
 					//Console.WriteLine(time.Elapsed.TotalMilliseconds);
-					//emulationLog.Append("time elapsed I entered interrupt: " + time.Elapsed.TotalMilliseconds);
+					emulationLog.Append("time elapsed I entered interrupt: " + time.Elapsed.TotalMilliseconds);
 					if (whichInterrupt == 1)
                     {
-                       // emulationLog.Append("Generating Interrupt 1 "); emulationLog.Append("\n");
+                        emulationLog.Append("Generating Interrupt 1 "); emulationLog.Append("\n");
                       //  Console.WriteLine("Generating Interrupt 1 ");
 						this.GenerateInterrupt(registers, 1); // Interrupt 1        
                         whichInterrupt = 2;
                     }
                     else
                     {
-					//	emulationLog.Append("Generating Interrupt 2 "); emulationLog.Append("\n");
+						emulationLog.Append("Generating Interrupt 2 "); emulationLog.Append("\n");
 						//Console.WriteLine();
 						//Console.WriteLine("Generating Interrupt 2 ");
 						this.GenerateInterrupt(registers, 2); // Interrupt 2, Middle of frame    
@@ -415,14 +415,14 @@ namespace Intel8080Emulator
 
                 while (cyclesLeft > cycles)
                 {
-					//emulationLog.Append("cyclesLeft: "); emulationLog.Append(cyclesLeft.ToString()); emulationLog.Append("\n");
-					//emulationLog.Append("Cycles: "); emulationLog.Append(cycles.ToString()); emulationLog.Append("\n");
-					//emulationLog.Append("Timer: "); emulationLog.Append(time.Elapsed.TotalMilliseconds.ToString()); emulationLog.Append("\n");
+					emulationLog.Append("cyclesLeft: "); emulationLog.Append(cyclesLeft.ToString()); emulationLog.Append("\n");
+					emulationLog.Append("Cycles: "); emulationLog.Append(cycles.ToString()); emulationLog.Append("\n");
+					emulationLog.Append("Timer: "); emulationLog.Append(time.Elapsed.TotalMilliseconds.ToString()); emulationLog.Append("\n");
 					// Console.WriteLine();
 					fixed (byte* opcode = &registers.memory[registers.Pc])
                         if (registers.memory[registers.Pc] == 0xdb) // IN INSTRUCTION
                         {
-							//emulationLog.Append("In Instruction: "); emulationLog.Append("\n");
+							emulationLog.Append("In Instruction: "); emulationLog.Append("\n");
 							byte port = (registers.memory[registers.Pc + 1]);
                             this.MachineIn(registers, port);
                             registers.Pc += 2;
@@ -430,7 +430,7 @@ namespace Intel8080Emulator
                         }
                         else if (registers.memory[registers.Pc] == 0xd3) // OUT INSTRUCTION
                         {
-							//emulationLog.Append("Out INSTRUCTION: "); emulationLog.Append("\n");
+							emulationLog.Append("Out INSTRUCTION: "); emulationLog.Append("\n");
 							byte port = (registers.memory[registers.Pc + 1]);
                             this.MachineOut(port);
                             registers.Pc += 2;
@@ -449,7 +449,7 @@ namespace Intel8080Emulator
 
                 using (System.IO.StreamWriter file = File.AppendText("C:\\Users\\felip\\Documents\\git\\SpaceInvaders8080Emulator\\ConsoleApp1\\DebugLogs\\invadersDebug.txt"))
                 {
-                   // file.WriteLine(emulationLog.ToString());
+                    file.WriteLine(emulationLog.ToString());
                 }
                 emulationLog.Clear();  
             }
@@ -500,9 +500,10 @@ namespace Intel8080Emulator
                     cycleCount = disassembler.InstructionSet.opDictionary[codebuffer[registers.Pc]].CycleCount;
                 }
                // Console.WriteLine();
-              //  emulationLog.Append(String.Format("Opcode: $0x{0:X}\n", opcode[0].ToString("X2")));
+                emulationLog.Append(String.Format("Opcode: $0x{0:X}\n", opcode[0].ToString("X2")));
+				emulationLog.Append(String.Format("PC: $0x{0:X}\n", registers.Pc.ToString("X4")));
 
-                switch (*opcode) // I can implement this with a dictionary that points to a... method? (delegate)
+				switch (*opcode) // I can implement this with a dictionary that points to a... method? (delegate)
                 {
                     case 0x00: // NOP               
                         break;
@@ -593,10 +594,14 @@ namespace Intel8080Emulator
                         break;
 
                     case 0x0f: // RRC 	A = A >> 1; bit 7 = prev bit 0; CY = prev bit 0
-                        x = registers.A;
-                        registers.A = (byte)((((byte)x & (byte)0x01) << (byte)0x07) | ((byte)x >> (byte)0x01));
-                        if ((x & 0x01) == 0x01) registers.Flags.Cy = 1; else registers.Flags.Cy = 0; // Carry Flag
-                        break;
+						var y = registers.A;
+						x = registers.A;
+						registers.A = (byte)((byte)registers.A >> (byte)0x01);
+						y = (byte)(((byte)(y << (byte)0x07)) & ((byte)(0x80)));
+						registers.A = (byte)(registers.A | y);
+						if ((byte)((x & (byte)0x01)) == (byte)0x01) registers.Flags.Cy = 1; else registers.Flags.Cy = 0;
+						break;
+
 
                     case 0x10: // NOP
                         break;
@@ -811,7 +816,7 @@ namespace Intel8080Emulator
                         break;
 
                     case 0x32: // STA Adr
-                        registers.memory[((ushort)opcode[2] << 8) | (ushort)opcode[1]] = registers.A;
+                        registers.memory[(((ushort)opcode[2]) << 8) | ((ushort)opcode[1])] = registers.A;
                         registers.Pc += 2;
                         break;
 
@@ -855,7 +860,7 @@ namespace Intel8080Emulator
                         break;
 
                     case 0x3a: // LDA adr
-                        registers.A = registers.memory[((ushort)opcode[2] << 8) | (ushort)opcode[1]];
+                        registers.A = registers.memory[(((ushort)opcode[2]) << 8) | ((ushort)opcode[1])];
                         registers.Pc += 2;
                         break;
 
@@ -2016,7 +2021,7 @@ namespace Intel8080Emulator
                     case 0xe3: // XTHL
                         aux1 = registers.L;
                         registers.L = registers.memory[registers.Sp];
-                        registers.memory[registers.Sp] = (byte)aux1;
+                        registers.memory[registers.Sp] = (byte)((byte)aux1 - (byte)0x01); // Subtracting 1 because PC always adds 1 at the end of the switch
                         aux2 = registers.H;
                         registers.H = registers.memory[registers.Sp + 1];
                         registers.memory[registers.Sp + 1] = (byte)aux2;

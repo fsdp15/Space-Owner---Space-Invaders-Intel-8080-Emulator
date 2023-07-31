@@ -90,8 +90,8 @@ void ThreadMethod2()
             "Space Invaders Emulator",
             SDL.SDL_WINDOWPOS_UNDEFINED,
             SDL.SDL_WINDOWPOS_UNDEFINED,
-            224,
-            256,
+            224 * 3,
+            256 * 3,
             SDL.SDL_WindowFlags.SDL_WINDOW_SHOWN);
 
         if (window == IntPtr.Zero)
@@ -195,18 +195,26 @@ void ThreadMethod2()
 					for (var bitIndex = 0; bitIndex < 8; bitIndex++)
 					{
 						bool bit = (value & (1 << bitIndex)) != 0;
-						if (bit == true)
+					var rect = new SDL.SDL_Rect
+					{
+						x = destCol * 3,
+						y = (destRow - bitIndex) * 3,
+						w = 3,
+						h = 3
+					};
+					if (bit == true)
 						{
 							SDL.SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-							SDL.SDL_RenderDrawPoint(renderer, destCol, (destRow - bitIndex));
+							//SDL.SDL_RenderDrawPoint(renderer, destCol, (destRow - bitIndex));
 						}
 						else
 						{
 							SDL.SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-							SDL.SDL_RenderDrawPoint(renderer, destCol, (destRow - bitIndex));
+						//	SDL.SDL_RenderDrawPoint(renderer, destCol, (destRow - bitIndex));
 						}
-
-					}
+					SDL.SDL_RenderFillRect(renderer, ref rect);
+				}
+					
 
 				}
 				SDL.SDL_RenderPresent(renderer);
