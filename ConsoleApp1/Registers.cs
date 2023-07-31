@@ -24,8 +24,8 @@ namespace Intel8080Emulator
         public Registers()
         {
             this.Flags = new Flags();
-            this.memory = new byte[0x10000]; // 16k of memory
-            this.Int_enable = 1;
+            this.memory = new byte[0x10000]; // 8k of memory = 65536 bytes
+			this.Int_enable = 1;
         }
 
         public byte A { get => a; set => a = value; }

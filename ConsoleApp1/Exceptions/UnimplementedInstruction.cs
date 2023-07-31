@@ -12,8 +12,9 @@ namespace Intel8080Emulator.Exceptions
         public UnimplementedInstruction(string message) : base(message)
         {
             Console.WriteLine("Error: Unimplemented instruction: $0x{0:X}\n", message);
-            using (System.IO.StreamWriter file = File.AppendText("C:\\Users\\felipedotti\\Desktop\\SpaceInvadersProject\\invadersDebug.txt"))
-            {
+            using (System.IO.StreamWriter file = File.AppendText("C:\\Users\\felip\\Documents\\git\\SpaceInvaders8080Emulator\\ConsoleApp1\\DebugLogs\\invadersDebug.txt"))
+
+			{
                 file.WriteLine("Error: Unimplemented instruction: $0x{0:X}\n", message);
             }
             System.Environment.Exit(1);
@@ -22,8 +23,9 @@ namespace Intel8080Emulator.Exceptions
         protected UnimplementedInstruction(SerializationInfo info, StreamingContext ctxt) : base(info, ctxt)
         {
             Console.WriteLine("Error: Unimplemented instruction\n");
-            using (System.IO.StreamWriter file = File.AppendText("C:\\Users\\felipedotti\\Desktop\\SpaceInvadersProject\\invadersDebug.txt"))
-            {
+            using (System.IO.StreamWriter file = File.AppendText("C:\\Users\\felip\\Documents\\git\\SpaceInvaders8080Emulator\\ConsoleApp1\\DebugLogs\\invadersDebug.txt"))
+
+			{
                 file.WriteLine("Error: Unimplemented instruction: $0x{0:X}\n");
             }
             System.Environment.Exit(1);
