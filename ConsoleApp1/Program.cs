@@ -11,14 +11,18 @@ using System.Threading;
 using System.Data;
 using System.Diagnostics;
 using System.Reflection.PortableExecutable;
+using static SDL2.SDL;
 
 //System.Threading.Thread.Sleep(5000);
 
 Intel8080Emulator.Intel8080Emulator intel8080Emulator = new();
 Thread newThread1 = new Thread(new ThreadStart(ThreadMethod1));
 Thread newThread2 = new Thread(new ThreadStart(ThreadMethod2));
+Thread newThread3 = new Thread(new ThreadStart(ThreadMethod3));
+
 newThread1.Start();
 newThread2.Start();
+newThread3.Start();
 
 //Disassembler disassembler = new Disassembler();
 //disassembler.ReadRom();
@@ -29,9 +33,6 @@ void ThreadMethod1() {
 }
 
 
-
-// See https://aka.ms/new-console-template for more information
-//Console.WriteLine("Hello, World!");
 
 void ThreadMethod2()
 {
@@ -136,45 +137,6 @@ void ThreadMethod2()
 			// Clears the current render surface
 			SDL.SDL_RenderClear(renderer);
 
-			/*	byte[,] newVram = new byte[256, 28]; // VRAM Buffer in bytes
-
-				int newRow = 0;
-				for (int i =  9216; i < 16384; i+=28)
-				{
-					for (int j = 0; j < 28; j++)
-					{
-						newVram[newRow, j] = intel8080Emulator.registers.memory[i + j];
-					}
-					newRow++;
-				}
-				//  for (int i = 0; i <)
-				for (int i = 0; i < 256; i++)
-				{
-					for (int k = 0; k < 28; k++)
-					{
-						for (int j = 0; j < 8; j++)
-						{
-					   //     if (newVram[i, k] != 0)
-						 //   {
-								int a = 1 << j;
-								bool bit = (newVram[i, k] & (1 << j)) != 0;
-								if (bit == true)
-								{
-									SDL.SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-									SDL.SDL_RenderDrawPoint(renderer, i, (k * 8) + (7-j));			
-							}
-								else
-								{
-									SDL.SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-									SDL.SDL_RenderDrawPoint(renderer, i, (k * 8) + (7-j));
-							}
-						//	}
-
-						}
-					}
-				}
-
-				SDL.SDL_RenderPresent(renderer); */
 
 
 
@@ -231,4 +193,105 @@ void ThreadMethod2()
         SDL.SDL_DestroyWindow(window);
         SDL.SDL_Quit();
     }
+} // Draw Graphics
+
+void ThreadMethod3()
+{
+	Console.WriteLine();
+	while (true)
+	{
+		while (SDL.SDL_PollEvent(out SDL.SDL_Event e) == 1)
+		{
+			switch (e.type)
+			{
+
+				case SDL.SDL_EventType.SDL_KEYDOWN:
+					switch (e.key.keysym.sym)
+					{
+						case SDL2.SDL.SDL_Keycode.SDLK_u:
+							intel8080Emulator.MachineKeyDown(1); // Port 0 Fire
+							break;
+						case SDL2.SDL.SDL_Keycode.SDLK_j:
+							intel8080Emulator.MachineKeyDown(2); // Port 0 Left
+							break;
+						case SDL2.SDL.SDL_Keycode.SDLK_l:
+							intel8080Emulator.MachineKeyDown(3); // Port 0 Right
+							break;
+						case SDL2.SDL.SDL_Keycode.SDLK_F1:
+							intel8080Emulator.MachineKeyDown(4); // Credit
+							break;
+						case SDL2.SDL.SDL_Keycode.SDLK_RCTRL:
+							intel8080Emulator.MachineKeyDown(5); // 2P START
+							break;
+						case SDL2.SDL.SDL_Keycode.SDLK_KP_ENTER:
+							intel8080Emulator.MachineKeyDown(6); // 1P START
+							break;
+						case SDL2.SDL.SDL_Keycode.SDLK_d:
+							intel8080Emulator.MachineKeyDown(7); // 1P SHOT
+							break;
+						case SDL2.SDL.SDL_Keycode.SDLK_LEFT:
+							intel8080Emulator.MachineKeyDown(8); // 1P LEFT
+							break;
+						case SDL2.SDL.SDL_Keycode.SDLK_RIGHT:
+							intel8080Emulator.MachineKeyDown(9); // 1P RIGHT
+							break;
+						case SDL2.SDL.SDL_Keycode.SDLK_n:
+							intel8080Emulator.MachineKeyDown(10); // 2P SHOT
+							break;
+						case SDL2.SDL.SDL_Keycode.SDLK_o:
+							intel8080Emulator.MachineKeyDown(11); // 2P LEFT
+							break;
+						case SDL2.SDL.SDL_Keycode.SDLK_p:
+							intel8080Emulator.MachineKeyDown(12); // 2P RIGHT
+							break;
+					}
+					break;
+
+				case SDL.SDL_EventType.SDL_KEYUP:
+					switch (e.key.keysym.sym)
+					{
+						case SDL2.SDL.SDL_Keycode.SDLK_u:
+							intel8080Emulator.MachineKeyUp(1); // Port 0 Fire
+							break;
+						case SDL2.SDL.SDL_Keycode.SDLK_j:
+							intel8080Emulator.MachineKeyUp(2); // Port 0 Left
+							break;
+						case SDL2.SDL.SDL_Keycode.SDLK_l:
+							intel8080Emulator.MachineKeyUp(3); // Port 0 Right
+							break;
+						case SDL2.SDL.SDL_Keycode.SDLK_F1:
+							intel8080Emulator.MachineKeyUp(4); // Credit
+							break;
+						case SDL2.SDL.SDL_Keycode.SDLK_RCTRL:
+							intel8080Emulator.MachineKeyUp(5); // 2P START
+							break;
+						case SDL2.SDL.SDL_Keycode.SDLK_KP_ENTER:
+							intel8080Emulator.MachineKeyUp(6); // 1P START
+							break;
+						case SDL2.SDL.SDL_Keycode.SDLK_d:
+							intel8080Emulator.MachineKeyUp(7); // 1P SHOT
+							break;
+						case SDL2.SDL.SDL_Keycode.SDLK_LEFT:
+							intel8080Emulator.MachineKeyUp(8); // 1P LEFT
+							break;
+						case SDL2.SDL.SDL_Keycode.SDLK_RIGHT:
+							intel8080Emulator.MachineKeyUp(9); // 1P RIGHT
+							break;
+						case SDL2.SDL.SDL_Keycode.SDLK_n:
+							intel8080Emulator.MachineKeyUp(10); // 2P SHOT
+							break;
+						case SDL2.SDL.SDL_Keycode.SDLK_o:
+							intel8080Emulator.MachineKeyUp(11); // 2P LEFT
+							break;
+						case SDL2.SDL.SDL_Keycode.SDLK_p:
+							intel8080Emulator.MachineKeyUp(12); // 2P RIGHT
+							break;
+					}
+					break;
+
+
+
+			}
+		}
+	}
 }
