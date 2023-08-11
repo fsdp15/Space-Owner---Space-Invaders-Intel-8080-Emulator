@@ -10,9 +10,9 @@ namespace Intel8080Emulator
 {
     internal unsafe class Intel8080Emulator
     {
-        private StringBuilder emulationLog;
+        public StringBuilder emulationLog;
         private Disassembler disassembler;
-        private Ports ports;
+        public Ports ports;
         public VideoBuffer videoBuffer;
         public Registers registers;
 
@@ -60,8 +60,10 @@ namespace Intel8080Emulator
                     registers.A = this.ports.InPorts[0];
                     break;
                 case 1:
+				//	emulationLog.Append(String.Format("InPorts[1] when reading MachineIn == $0x{0:X}", this.ports.InPorts[1].ToString("X2")));
+					//emulationLog.Append("\n");
 					registers.A = this.ports.InPorts[1];
-                    break;
+					break;
 				case 2:
 					registers.A = this.ports.InPorts[2];
 					break;
@@ -81,13 +83,21 @@ namespace Intel8080Emulator
                 case 2: // shift offset
                     this.ports.ShiftOffset = (byte)(value & 0x7); // bits 0, 1 and 2 define the offset
                     break;
-                case 4:
+                case 3:
+					this.ports.OutPorts[3] = value;
+					break;
+				case 4:
                     this.ports.Shift0 = this.ports.Shift1;
                     this.ports.Shift1 = value;
                     break;
-                case 6:
+                case 5:
+					this.ports.OutPorts[5] = value;
+                    break;
+				case 6:
                     this.ports.OutPorts[6] = value;
                     break;
+                default:
+                    return;
             }
         }
 
@@ -105,9 +115,12 @@ namespace Intel8080Emulator
                     this.ports.InPorts[0] |= 0x40; // Port 0 Right
                     break;
                 case 4:
-                //    Console.WriteLine();
-                    this.ports.InPorts[1] |= 0x01; // Credit
-				//	Console.WriteLine();
+					//    Console.WriteLine();
+					this.ports.InPorts[1] |= 0x01; // Credit
+												   //	Console.WriteLine();
+				//	emulationLog.Append(String.Format("InPorts[1] when MachineKeyDown == $0x{0:X}", this.ports.InPorts[1].ToString("X2")));
+				//	emulationLog.Append("\n");
+
 					break;
                 case 5:
                     this.ports.InPorts[1] |= 0x02; // 2P START
@@ -152,8 +165,10 @@ namespace Intel8080Emulator
                     this.ports.InPorts[0] &= 0xBF; // Port 0 Right
                     break;
                 case 4:
-                    this.ports.InPorts[1] &= 0xFE; // Credit
-                    break;
+					this.ports.InPorts[1] &= 0xFE; // Credit
+				//	emulationLog.Append(String.Format("InPorts[1] when MachineKeyUp == $0x{0:X}", this.ports.InPorts[1].ToString("X2")));
+				//	emulationLog.Append("\n");
+					break;
                 case 5:
                     this.ports.InPorts[1] &= 0xFD; // 2P START
                     break;
@@ -263,7 +278,7 @@ namespace Intel8080Emulator
 
                 using (System.IO.StreamWriter file = File.AppendText("C:\\Users\\felip\\Documents\\git\\SpaceInvaders8080Emulator\\ConsoleApp1\\DebugLogs\\testDebug.txt"))
                 {
-                   // file.WriteLine(emulationLog.ToString());
+                  //  file.WriteLine(emulationLog.ToString());
                 }
                // emulationLog.Clear();
             }
@@ -403,7 +418,7 @@ namespace Intel8080Emulator
 
                 using (System.IO.StreamWriter file = File.AppendText("C:\\Users\\felip\\Documents\\git\\SpaceInvaders8080Emulator\\ConsoleApp1\\DebugLogs\\invadersDebug.txt"))
                 {
-                  //  file.WriteLine(emulationLog.ToString());
+                   // file.WriteLine(emulationLog.ToString());
                 }
                // emulationLog.Clear();  
             }
