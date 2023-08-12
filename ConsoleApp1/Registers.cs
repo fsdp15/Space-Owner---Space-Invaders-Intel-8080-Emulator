@@ -8,24 +8,27 @@ namespace Intel8080Emulator
 {
     internal unsafe class Registers
     {
-        byte a;
-        byte b;
-        byte c;
-        byte d;
-        byte e;
-        byte h;
-        byte l;
-        ushort sp;
-        ushort pc;
-        public byte[] memory; //16K // Encapsulate to not allow write before address 0x2000 or after address 0x4000
-        Flags flags;
-        byte int_enable;
+        const int INTERRUPT_ENABLED = 1;
+        const int INTERRUPT_DISABLED = 0;
+
+        private byte a;
+		private byte b;
+		private byte c;
+		private byte d;
+		private byte e;
+		private byte h;
+		private byte l;
+		private ushort sp;
+		private ushort pc;
+        public byte[] memory; //16K
+		private Flags flags;
+		private byte int_enable;
 
         public Registers()
         {
             this.Flags = new Flags();
-            this.memory = new byte[0x10000]; // 8k of memory = 65536 bytes
-			this.Int_enable = 1;
+            this.memory = new byte[0x10000]; // = 8k bytes of memory = 65536 bits
+			this.Int_enable = INTERRUPT_ENABLED;
         }
 
         public byte A { get => a; set => a = value; }

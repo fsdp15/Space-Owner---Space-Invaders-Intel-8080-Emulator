@@ -7,37 +7,16 @@
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <UseWindowsForms>False</UseWindowsForms>
+    <ApplicationIcon>SpaceOwner icon.ico</ApplicationIcon>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="SpaceOwner icon.ico" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Sayers.SDL2.Core" Version="1.0.11" />
     <PackageReference Include="System.Windows.Extensions" Version="7.0.0" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Update="ROM\cpudiag.bin">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="ROM\invaders">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="ROM\invaders.e">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="ROM\invaders.f">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="ROM\invaders.g">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="ROM\invaders.h">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="DebugLogs\" />
-    <Folder Include="Audio\" />
   </ItemGroup>
 
 </Project>

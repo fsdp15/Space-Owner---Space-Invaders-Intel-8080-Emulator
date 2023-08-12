@@ -1,5 +1,4 @@
-﻿using ConsoleApp1;
-using System.ComponentModel.Design;
+﻿using System.ComponentModel.Design;
 using System.Numerics;
 using System.Text;
 using Intel8080Emulator;
@@ -15,69 +14,67 @@ using static SDL2.SDL;
 using System.Windows;
 using System.Media;
 
+const int FPS = 60; // Limiting SDL to 60 FPS. The CPU fills VRAM at 60 fps.
+const int frameDelay = 1000 / FPS;
+
+Thread.Sleep(3000);
+
 Intel8080Emulator.Intel8080Emulator intel8080Emulator = new();
 Thread newThread1 = new Thread(new ThreadStart(ThreadMethod1)); // CPU
 Thread newThread2 = new Thread(new ThreadStart(ThreadMethod2)); // Video and Inputs
 Thread newThread3 = new Thread(new ThreadStart(ThreadMethod3)); // Sound
 
+newThread1.IsBackground = true;
+newThread3.IsBackground = true;
+
 newThread1.Start();
 newThread2.Start();
 newThread3.Start();
 
-//Disassembler disassembler = new Disassembler();
-//disassembler.ReadRom();
-
 void ThreadMethod1() {
-    intel8080Emulator.ReadRom(intel8080Emulator.registers);
-    //intel8080Emulator.ReadTestRom();
+	//intel8080Emulator.ReadTestRom(); // For CPU testing if needed
+	intel8080Emulator.ReadRom(intel8080Emulator.registers);
+	intel8080Emulator.DoEmulation(intel8080Emulator.registers);
 }
 
-
-
-void ThreadMethod2()
+void ThreadMethod2() // SDL
 {
 
     IntPtr window;
     IntPtr renderer;
-	IntPtr texture;
     bool running = true;
 
     Setup();
 
 	var time = new Stopwatch();
-	double lastTimer = 0.0;
-	double nextRefreshTime = 0.0;
 	time.Start();
 
 
-	const int FPS = 60;
-	const int frameDelay = 1000 / FPS;
 	UInt32 frameStart;
 	UInt32 frameTime;
-	//int count = 0;
+
 	while (running)
     {
 		frameStart = SDL.SDL_GetTicks();
-
-
 		PollEvents();
-            //Console.Write(count);
-            Render();
-
+        Render();
 		frameTime = SDL.SDL_GetTicks() - frameStart;
 		if (frameDelay > frameTime)
 		{
 			SDL.SDL_Delay(frameDelay - frameTime);
 		}
-		// count++;
 	}
 
-    //Console.Write("aaa");
-
     CleanUp();
+	const int WIDTH = 224;
+	const int HEIGHT = 256;
+	const int SCALE = 3;
+	const int VRAM_OFFSET = 9216;
+	const int WIDTH_PIXELS = WIDTH * 32; 
 
-    /// Setup all of the SDL resources we'll need to display a window.
-    void Setup()
+
+	/// Setup all of the SDL resources we'll need to display a window.
+	void Setup()
     {
 
         // Initializes SDL
@@ -88,11 +85,11 @@ void ThreadMethod2()
 
         // Create a new window given a title, size, and passes it a a flag indicating it should be shown.
         window = SDL.SDL_CreateWindow(
-            "Space Invaders Emulator",
+            "Space Owner Emulator",
             SDL.SDL_WINDOWPOS_UNDEFINED,
             SDL.SDL_WINDOWPOS_UNDEFINED,
-            224 * 3,
-            256 * 3,
+			WIDTH * SCALE,
+			HEIGHT * SCALE,
             SDL.SDL_WindowFlags.SDL_WINDOW_SHOWN);
 
         if (window == IntPtr.Zero)
@@ -114,7 +111,7 @@ void ThreadMethod2()
     void PollEvents()
     {
         // Check to see if there any events and continue to do so until the queue is empty.
-        while (SDL.SDL_PollEvent(out SDL.SDL_Event e) == 1)
+        while (SDL.SDL_PollEvent(out SDL.SDL_Event e) == 1) // Polling for video and input events
         {
             switch (e.type)
             {
@@ -134,13 +131,7 @@ void ThreadMethod2()
 							intel8080Emulator.MachineKeyDown(3); // Port 0 Right
 							break;
 						case SDL2.SDL.SDL_Keycode.SDLK_1:
-							//Console.WriteLine();
-						//	intel8080Emulator.emulationLog.Append(String.Format("F1 Key Pressed", intel8080Emulator.ports.InPorts[1].ToString("X2")));
-						//	intel8080Emulator.emulationLog.Append("\n");
 							intel8080Emulator.MachineKeyDown(4); // Credit
-							//intel8080Emulator.emulationLog.Append(String.Format("F1 Key pressed and after Machine KeyDown: InPorts[1] when MachineKeyDown == $0x{0:X}", intel8080Emulator.ports.InPorts[1].ToString("X2")));
-						//	intel8080Emulator.emulationLog.Append("\n");
-							//Console.WriteLine();
 							break;
 						case SDL2.SDL.SDL_Keycode.SDLK_RCTRL:
 							intel8080Emulator.MachineKeyDown(5); // 2P START
@@ -182,16 +173,7 @@ void ThreadMethod2()
 							intel8080Emulator.MachineKeyUp(3); // Port 0 Right
 							break;
 						case SDL2.SDL.SDL_Keycode.SDLK_1:
-							Console.WriteLine();
-						//	intel8080Emulator.emulationLog.Append(String.Format("F1 Key Released", intel8080Emulator.ports.InPorts[1].ToString("X2")));
-						//	intel8080Emulator.emulationLog.Append("\n");
 							intel8080Emulator.MachineKeyUp(4); // Credit
-						//	intel8080Emulator.emulationLog.Append(String.Format("F1 Key Released and after Machine KeyUp: InPorts[1] when MachineKeyDown == $0x{0:X}", intel8080Emulator.ports.InPorts[1].ToString("X2")));
-						//	intel8080Emulator.emulationLog.Append("\n");
-							Console.WriteLine();
-
-							// botar o console log aqui
-
 							break;
 						case SDL2.SDL.SDL_Keycode.SDLK_RCTRL:
 							intel8080Emulator.MachineKeyUp(5); // 2P START
@@ -226,23 +208,15 @@ void ThreadMethod2()
     // Renders to the window
     void Render()
 	{
-
-
 		unsafe
 		{
 			// Sets the color that the screen will be cleared with.
 			SDL.SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
 			// Clears the current render surface
 			SDL.SDL_RenderClear(renderer);
-
-
-
-
-
-				for (var byteIndex = 0; byteIndex < 7168; byteIndex++)
+				for (var byteIndex = 0; byteIndex < WIDTH_PIXELS; byteIndex++) // Alghoritm to rotate the screen counter clockwise.
 				{
-					//	Console.WriteLine(a);
-					var loc = byteIndex + 9216;
+					var loc = byteIndex + VRAM_OFFSET; // VRAM location
 
 					var value = intel8080Emulator.registers.memory[loc];
 					var pixelIndex = byteIndex * 8;
@@ -255,80 +229,90 @@ void ThreadMethod2()
 					for (var bitIndex = 0; bitIndex < 8; bitIndex++)
 					{
 						bool bit = (value & (1 << bitIndex)) != 0;
-					var rect = new SDL.SDL_Rect
-					{
-						x = destCol * 3,
-						y = (destRow - bitIndex) * 3,
-						w = 3,
-						h = 3
+						var rect = new SDL.SDL_Rect
+						{
+						x = destCol * SCALE,
+						y = (destRow - bitIndex) * SCALE,
+						w = SCALE,
+						h = SCALE
 					};
-					if (bit == true)
-						{
-							SDL.SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-							//SDL.SDL_RenderDrawPoint(renderer, destCol, (destRow - bitIndex));
-						}
-						else
-						{
-							SDL.SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-						//	SDL.SDL_RenderDrawPoint(renderer, destCol, (destRow - bitIndex));
-						}
-					SDL.SDL_RenderFillRect(renderer, ref rect);
-				}
-					
 
+					if (bit == true) {
+						SDL.SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+						}
+					else{
+						SDL.SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+						}
+
+					SDL.SDL_RenderFillRect(renderer, ref rect);
+
+					}
 				}
 				SDL.SDL_RenderPresent(renderer);
-				//Console.WriteLine(a);
-
-			// Console.Write("a");
-
 		}
 	}
 
+	// Quitting
     void CleanUp()
     {
         SDL.SDL_DestroyRenderer(renderer);
         SDL.SDL_DestroyWindow(window);
         SDL.SDL_Quit();
-    }
-} // Draw Graphics
 
-void ThreadMethod3()
+    }
+}
+
+void ThreadMethod3() // Play audio .wav files whenever the game indicates to do so. Future improvement: listen to events to play sound instead of an infinite loop (less CPU usage)
 {
 	byte lastOutPort3 = new byte();
 	byte lastOutPort5 = new byte();
-#pragma warning disable CA1416 // Validate platform compatibility
+	#pragma warning disable CA1416 // Validate platform compatibility
 	SoundPlayer player = new SoundPlayer();
-#pragma warning restore CA1416 // Validate platform compatibility
-	while (true)
+	#pragma warning restore CA1416 // Validate platform compatibility
+
+	UInt32 frameStart;
+	UInt32 frameTime;
+
+	while (true) 
 	{
+
+		frameStart = SDL.SDL_GetTicks();
+
+
 		if (lastOutPort3 != intel8080Emulator.ports.OutPorts[3]) {
 			if (((intel8080Emulator.ports.OutPorts[3] & 0x01) == 0x01) && ((intel8080Emulator.ports.OutPorts[3] & 0x01) != (lastOutPort3 & 0x01)))
 			{
-				player.SoundLocation = "C:\\Users\\felip\\Documents\\git\\SpaceInvaders8080Emulator\\ConsoleApp1\\Audio\\ufo_lowpitch.wav";
+				#pragma warning disable CA1416 // Validate platform compatibility
+				player.SoundLocation = AppDomain.CurrentDomain.BaseDirectory  + "\\Audio\\ufo_lowpitch.wav";
 				player.PlaySync();
+				#pragma warning restore CA1416 // Validate platform compatibility
 				// Play UFO sound for a while
 			}
 
 			if (((intel8080Emulator.ports.OutPorts[3] & 0x02) == 0x02) && ((intel8080Emulator.ports.OutPorts[3] & 0x02) != (lastOutPort3 & 0x02)))
 			{
-				Console.WriteLine();
-				player.SoundLocation = "C:\\Users\\felip\\Documents\\git\\SpaceInvaders8080Emulator\\ConsoleApp1\\Audio\\shoot.wav";
+				#pragma warning disable CA1416 // Validate platform compatibility
+				player.SoundLocation = AppDomain.CurrentDomain.BaseDirectory + "\\Audio\\shoot.wav";
 				player.PlaySync();
+				#pragma warning restore CA1416 // Validate platform compatibility
 				// Play shot sound
 			}
 
 			if (((intel8080Emulator.ports.OutPorts[3] & 0x04) == 0x04) && ((intel8080Emulator.ports.OutPorts[3] & 0x04) != (lastOutPort3 & 0x04)))
 			{
-				player.SoundLocation = "C:\\Users\\felip\\Documents\\git\\SpaceInvaders8080Emulator\\ConsoleApp1\\Audio\\explosion.wav";
+				#pragma warning disable CA1416 // Validate platform compatibility
+				player.SoundLocation = AppDomain.CurrentDomain.BaseDirectory + "\\Audio\\explosion.wav";
 				player.PlaySync();
+				#pragma warning restore CA1416 // Validate platform compatibility
 				// Player death sound
 			}
 
 			if (((intel8080Emulator.ports.OutPorts[3] & 0x08) == 0x08) && ((intel8080Emulator.ports.OutPorts[3] & 0x08) != (lastOutPort3 & 0x08)))
 			{
-				player.SoundLocation = "C:\\Users\\felip\\Documents\\git\\SpaceInvaders8080Emulator\\ConsoleApp1\\Audio\\invaderkilled.wav";
+				#pragma warning disable CA1416 // Validate platform compatibility
+				player.SoundLocation = AppDomain.CurrentDomain.BaseDirectory + "\\Audio\\invaderkilled.wav";
 				player.PlaySync();
+				#pragma warning restore CA1416 // Validate platform compatibility
 				// Player alien death sound
 			}
 
@@ -339,36 +323,51 @@ void ThreadMethod3()
 		{
 			if (((intel8080Emulator.ports.OutPorts[5] & 0x01) == 0x01) && ((intel8080Emulator.ports.OutPorts[5] & 0x01) != (lastOutPort5 & 0x01)))
 			{
-				player.SoundLocation = "C:\\Users\\felip\\Documents\\git\\SpaceInvaders8080Emulator\\ConsoleApp1\\Audio\\fastinvader1.wav";
+				#pragma warning disable CA1416 // Validate platform compatibility
+				player.SoundLocation = AppDomain.CurrentDomain.BaseDirectory + "\\Audio\\fastinvader1.wav";
 				player.PlaySync();
+				#pragma warning restore CA1416 // Validate platform compatibility
 			}
 
 			if (((intel8080Emulator.ports.OutPorts[5] & 0x02) == 0x02) && ((intel8080Emulator.ports.OutPorts[5] & 0x02) != (lastOutPort5 & 0x02)))
 			{
-				player.SoundLocation = "C:\\Users\\felip\\Documents\\git\\SpaceInvaders8080Emulator\\ConsoleApp1\\Audio\\fastinvader2.wav";
+				#pragma warning disable CA1416 // Validate platform compatibility
+				player.SoundLocation = AppDomain.CurrentDomain.BaseDirectory + "\\Audio\\fastinvader2.wav";
 				player.PlaySync();
-				// SX7 5.raw
+				#pragma warning restore CA1416 // Validate platform compatibility
 			}
 
 			if (((intel8080Emulator.ports.OutPorts[5] & 0x04) == 0x04) && ((intel8080Emulator.ports.OutPorts[5] & 0x04) != (lastOutPort5 & 0x04)))
 			{
-				player.SoundLocation = "C:\\Users\\felip\\Documents\\git\\SpaceInvaders8080Emulator\\ConsoleApp1\\Audio\\fastinvader3.wav";
+				#pragma warning disable CA1416 // Validate platform compatibility
+				player.SoundLocation = AppDomain.CurrentDomain.BaseDirectory + "\\Audio\\fastinvader3.wav";
 				player.PlaySync();
+				#pragma warning restore CA1416 // Validate platform compatibility
 			}
 
 			if (((intel8080Emulator.ports.OutPorts[5] & 0x08) == 0x08) && ((intel8080Emulator.ports.OutPorts[5] & 0x08) != (lastOutPort5 & 0x08)))
 			{
-				player.SoundLocation = "C:\\Users\\felip\\Documents\\git\\SpaceInvaders8080Emulator\\ConsoleApp1\\Audio\\fastinvader4.wav";
+				#pragma warning disable CA1416 // Validate platform compatibility
+				player.SoundLocation = AppDomain.CurrentDomain.BaseDirectory + "\\Audio\\fastinvader4.wav";
 				player.PlaySync();
+				#pragma warning restore CA1416 // Validate platform compatibility
 			}
 
 			if (((intel8080Emulator.ports.OutPorts[5] & 0x10) == 0x10) && ((intel8080Emulator.ports.OutPorts[5] & 0x10) != (lastOutPort5 & 0x10)))
 			{
-				player.SoundLocation = "C:\\Users\\felip\\Documents\\git\\SpaceInvaders8080Emulator\\ConsoleApp1\\Audio\\invaderkilled.wav";
+				#pragma warning disable CA1416 // Validate platform compatibility
+				player.SoundLocation = AppDomain.CurrentDomain.BaseDirectory + "\\Audio\\invaderkilled.wav";
 				player.PlaySync();
+				#pragma warning restore CA1416 // Validate platform compatibility
 			}
 
 			lastOutPort5 = intel8080Emulator.ports.OutPorts[5];
+
+		}
+		frameTime = SDL.SDL_GetTicks() - frameStart;
+		if (frameDelay > frameTime)
+		{
+			Thread.Sleep((int)(frameDelay - frameTime));
 		}
 	}
 }

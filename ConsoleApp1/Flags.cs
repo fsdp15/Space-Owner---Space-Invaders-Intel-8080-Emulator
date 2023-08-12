@@ -8,12 +8,12 @@ namespace Intel8080Emulator
 {
     public class Flags
     {
-        byte z; // Zero bit
-        byte s; // Sign bit
-        byte p; // Parity bit
-        byte cy; // Carry bit
-        byte ac; // Auxiliary carry bit
-        byte pad; // 
+        private byte z; // Zero bit
+		private byte s; // Sign bit
+		private byte p; // Parity bit
+		private byte cy; // Carry bit
+		private byte ac; // Auxiliary carry bit
+		private byte pad;
 
         public Flags()
         {

@@ -1,5 +1,4 @@
-﻿using ConsoleApp1;
-using Intel8080Emulator.Exceptions;
+﻿using Intel8080Emulator.Exceptions;
 using System;
 using System.IO;
 using System.Text;
@@ -10,46 +9,178 @@ namespace Intel8080Emulator
 {
     internal unsafe class Intel8080Emulator
     {
-        public StringBuilder emulationLog;
-        private Disassembler disassembler;
-        public Ports ports;
-        public VideoBuffer videoBuffer;
-        public Registers registers;
 
+		const int DRAW_NEXT_FRAME_TIME = 8;
+		const int CLOCK_SPEED = 2000; // Time is measured in miliseconds, so 2000 * time = 2MHz
+		const int MIDDLE_SCREEN_INTERRUPT = 1;
+		const int END_SCREEN_INTERRUPT = 2;
+		const int INTERRUPT_ENABLED = 1;
+		const int INTERRUPT_DISABLED = 0;
 
+		//private StringBuilder emulationLog;
+		private InstructionSet instructionSet;
 
-		// I need to check how to inject this dependency
+		public Ports ports;
+		public Registers registers;
 
 		public Intel8080Emulator()
         {
-            emulationLog = new();
-            disassembler = new();
-            ports = new();
+            //emulationLog = new();
+			instructionSet = new InstructionSet();
+			ports = new();
             registers = new();
-            videoBuffer = new();
 		}
 
-        public void ProcessorState(Registers registers)
+        /*public void ProcessorState(Registers registers)
         {
-			//Console.WriteLine();
-			//Console.WriteLine();
-			//emulationLog.Append("Carry flag: "); emulationLog.Append(registers.Flags.Cy.ToString()); emulationLog.Append("\n");
-            //emulationLog.Append("Parity flag: "); emulationLog.Append(registers.Flags.P.ToString()); emulationLog.Append("\n");
-            //emulationLog.Append("Sign flag: "); emulationLog.Append(registers.Flags.S.ToString()); emulationLog.Append("\n");
-            //emulationLog.Append("Zero flag: "); emulationLog.Append(registers.Flags.Z.ToString()); emulationLog.Append("\n");
-            //Console.WriteLine();
-           /* emulationLog.Append(String.Format("A: $0x{0:X}; B: $0x{1:X}; C: $0x{2:X}; D: $0x{3:X}; E: $0x{4:X}; " +
+			emulationLog.Append("Carry flag: "); emulationLog.Append(registers.Flags.Cy.ToString()); emulationLog.Append("\n");
+            emulationLog.Append("Parity flag: "); emulationLog.Append(registers.Flags.P.ToString()); emulationLog.Append("\n");
+            emulationLog.Append("Sign flag: "); emulationLog.Append(registers.Flags.S.ToString()); emulationLog.Append("\n");
+            emulationLog.Append("Zero flag: "); emulationLog.Append(registers.Flags.Z.ToString()); emulationLog.Append("\n");
+            emulationLog.Append(String.Format("A: $0x{0:X}; B: $0x{1:X}; C: $0x{2:X}; D: $0x{3:X}; E: $0x{4:X}; " +
                 "H: $0x{5:X}; L: $0x{6:X}; SP: $0x{7:X}\n", registers.A.ToString("X2"), registers.B.ToString("X2"),
                 registers.C.ToString("X2"), registers.D.ToString("X2"), registers.E.ToString("X2"), registers.H.ToString("X2"),
-                registers.L.ToString("X2"), registers.Sp.ToString("X4"))); */
-           // emulationLog.Append("\n");
-			//Console.WriteLine();
-            //emulationLog.Append(String.Format("Registers[9212] == $0x{0:X}", registers.memory[9212]));
-			//emulationLog.Append("\n");
-			//emulationLog.Append(String.Format("Registers[9213] == $0x{0:X}", registers.memory[9213]));
-			//emulationLog.Append("\n");
-			//Console.WriteLine();
-			//Console.WriteLine(); 
+                registers.L.ToString("X2"), registers.Sp.ToString("X4"))); 
+            emulationLog.Append("\n");
+		}*/
+
+
+		public void ReadTestRom() // Intel 8080 Diagnostics ROM
+		{
+			FileStream romObj = new FileStream(AppDomain.CurrentDomain.BaseDirectory + "ROM\\cpudiag.bin", FileMode.Open, FileAccess.Read);
+
+			romObj.Seek(0, SeekOrigin.Begin);
+			Registers registers = new();
+			registers.Pc = 0;
+
+			for (int i = 0 + 0x100; i < romObj.Length + 0x100; i++)
+			{
+				registers.memory[i] = (byte)romObj.ReadByte();
+			}
+
+			// Fix the first instruction to be JMP 0x100
+			registers.memory[0] = 0xc3; // OPCode for JMP
+			registers.memory[1] = 0;
+			registers.memory[2] = 0x01;
+
+			// Fix the stack pointer from 0x6ad to 0x7ad
+			// 0x06 is byte 112 in the test code, which is 112 + 0x100 = 368 in memory
+			registers.memory[368] = 0x7;
+
+			// Skip DAA Test
+			registers.memory[0x59c] = 0xc3; //JMP
+			registers.memory[0x59d] = 0xc2;
+			registers.memory[0x59e] = 0x05;
+
+			while (true)
+			{
+				this.Emulate8080OpInstruction(registers);
+
+				/* using (System.IO.StreamWriter file = File.AppendText(AppDomain.CurrentDomain.BaseDirectory + "\\DebugLogs\\testDebug.txt"))
+				{
+					file.WriteLine(emulationLog.ToString());
+				} */
+				//emulationLog.Clear();
+			}
+		}
+
+        public void ReadRom(Registers registers)
+        {
+            FileStream romObj = new FileStream(AppDomain.CurrentDomain.BaseDirectory + "ROM\\invaders", FileMode.Open, FileAccess.Read);
+            romObj.Seek(0, SeekOrigin.Begin);
+            registers.Pc = 0;
+
+            for (int i = 0; i < romObj.Length; i++)
+            {
+                registers.memory[i] = (byte)romObj.ReadByte();
+            }
+
+        }
+
+        public void DoEmulation(Registers registers) {
+
+			var time = new Stopwatch();
+			double lastTimer = 0.0;
+			double nextInterruptTime = 0.0;
+			byte whichInterrupt = MIDDLE_SCREEN_INTERRUPT;
+
+			time.Start();
+
+			while (true)
+			{
+
+				if (lastTimer == 0.0)
+				{
+					lastTimer = time.Elapsed.TotalMilliseconds;
+					nextInterruptTime = lastTimer + DRAW_NEXT_FRAME_TIME * 2;
+					whichInterrupt = MIDDLE_SCREEN_INTERRUPT;
+				}
+
+				if (registers.Int_enable == INTERRUPT_ENABLED && time.Elapsed.TotalMilliseconds > nextInterruptTime)
+				{
+					if (whichInterrupt == MIDDLE_SCREEN_INTERRUPT)
+					{
+						//	emulationLog.Append("Generating Interrupt 1 "); emulationLog.Append("\n");
+						this.GenerateInterrupt(registers, MIDDLE_SCREEN_INTERRUPT); // Interrupt 1        
+						whichInterrupt = END_SCREEN_INTERRUPT;
+					}
+					else
+					{
+						//	emulationLog.Append("Generating Interrupt 2 "); emulationLog.Append("\n");
+						this.GenerateInterrupt(registers, END_SCREEN_INTERRUPT); // Interrupt 2, Middle of frame    
+						whichInterrupt = MIDDLE_SCREEN_INTERRUPT;
+					}
+					nextInterruptTime = time.Elapsed.TotalMilliseconds + DRAW_NEXT_FRAME_TIME;
+				}
+
+				// CPU = 2Mhz = 2000000 cycle/second
+				double sinceLast = time.Elapsed.TotalMilliseconds - lastTimer;
+				if (sinceLast < DRAW_NEXT_FRAME_TIME)
+				{
+					Thread.Sleep((int)(time.Elapsed.TotalMilliseconds - lastTimer));
+				} 
+				sinceLast = time.Elapsed.TotalMilliseconds - lastTimer;
+				int cyclesLeft = (int)(CLOCK_SPEED * sinceLast); 
+				int cycles = 0;
+
+				while (cyclesLeft > cycles)
+				{
+					//	emulationLog.Append("cyclesLeft: "); emulationLog.Append(cyclesLeft.ToString()); emulationLog.Append("\n");
+					//	emulationLog.Append("Cycles: "); emulationLog.Append(cycles.ToString()); emulationLog.Append("\n");
+					//	emulationLog.Append("Timer: "); emulationLog.Append(time.Elapsed.TotalMilliseconds.ToString()); emulationLog.Append("\n");
+					fixed (byte* opcode = &registers.memory[registers.Pc])
+						if (registers.memory[registers.Pc] == 0xdb) // IN INSTRUCTION
+						{
+							//emulationLog.Append("In Instruction: "); emulationLog.Append("\n");
+							byte port = (registers.memory[registers.Pc + 1]);
+							this.MachineIn(registers, port);
+							registers.Pc += 2;
+							cycles += 3;
+						}
+						else if (registers.memory[registers.Pc] == 0xd3) // OUT INSTRUCTION
+						{
+							//emulationLog.Append("Out INSTRUCTION: "); emulationLog.Append("\n");
+							byte port = (registers.memory[registers.Pc + 1]);
+							this.MachineOut(port, registers.A);
+							registers.Pc += 2;
+							cycles += 3;
+						}
+						else
+						{
+							cycles += this.Emulate8080OpInstruction(registers);
+						}
+				}
+             
+				lastTimer = time.Elapsed.TotalMilliseconds;
+
+
+				// using (System.IO.StreamWriter file = File.AppendText(AppDomain.CurrentDomain.BaseDirectory + "DebugLogs\\invadersDebug.txt"))
+				//{
+				//file.WriteLine(emulationLog.ToString());
+				//} 
+				//emulationLog.Clear();  
+			}
+
 		}
 
 		public void MachineIn(Registers registers, byte port)
@@ -60,8 +191,6 @@ namespace Intel8080Emulator
                     registers.A = this.ports.InPorts[0];
                     break;
                 case 1:
-				//	emulationLog.Append(String.Format("InPorts[1] when reading MachineIn == $0x{0:X}", this.ports.InPorts[1].ToString("X2")));
-					//emulationLog.Append("\n");
 					registers.A = this.ports.InPorts[1];
 					break;
 				case 2:
@@ -76,7 +205,7 @@ namespace Intel8080Emulator
             }
         }
 
-        public void MachineOut(byte port, byte value) // value of the port
+        public void MachineOut(byte port, byte value) // value of register A
         {
             switch (port)
             {
@@ -115,12 +244,7 @@ namespace Intel8080Emulator
                     this.ports.InPorts[0] |= 0x40; // Port 0 Right
                     break;
                 case 4:
-					//    Console.WriteLine();
 					this.ports.InPorts[1] |= 0x01; // Credit
-												   //	Console.WriteLine();
-				//	emulationLog.Append(String.Format("InPorts[1] when MachineKeyDown == $0x{0:X}", this.ports.InPorts[1].ToString("X2")));
-				//	emulationLog.Append("\n");
-
 					break;
                 case 5:
                     this.ports.InPorts[1] |= 0x02; // 2P START
@@ -166,8 +290,6 @@ namespace Intel8080Emulator
                     break;
                 case 4:
 					this.ports.InPorts[1] &= 0xFE; // Credit
-				//	emulationLog.Append(String.Format("InPorts[1] when MachineKeyUp == $0x{0:X}", this.ports.InPorts[1].ToString("X2")));
-				//	emulationLog.Append("\n");
 					break;
                 case 5:
                     this.ports.InPorts[1] &= 0xFD; // 2P START
@@ -197,233 +319,22 @@ namespace Intel8080Emulator
         }
 
 
-
         public void GenerateInterrupt(Registers registers, int interruptNum)
         {
             ushort aux = (ushort)(registers.Pc - (ushort)0x0001);
-			//Console.WriteLine();
 			Byte high = (byte)((aux & 0xFF00) >> 8);
-
 			Byte low = (byte)((aux) & 0x00ff);
-
-			//Console.WriteLine();
 			Push(registers, high, low);
-            //Console.WriteLine();
             registers.Pc = (ushort)(8 * interruptNum);
-
-            registers.Int_enable = 0;
-
+            registers.Int_enable = INTERRUPT_DISABLED;
         }
 
         public void Push(Registers registers, byte A, byte B)
         {
-
-
-			//Console.WriteLine();
-			//emulationLog.Append("Zero flag: "); emulationLog.Append(registers.Flags.Z.ToString()); emulationLog.Append("\n");
-			//emulationLog.Append("Zero flag: "); emulationLog.Append(registers.Flags.Z.ToString()); emulationLog.Append("\n");
-            // sp-2 = b, sp-1 = A, sp = sp -2
-            //  if ()
-       //     Console.WriteLine("");
 			registers.memory[registers.Sp - 2] = B;
             registers.memory[registers.Sp - 1] = A;
             registers.Sp -= 2;
-			//	Console.WriteLine("");
-			//Console.WriteLine();
-			//Console.WriteLine();
-
 		}
-
-
-
-        public void ReadTestRom()
-        {
-            FileStream romObj = new FileStream(AppDomain.CurrentDomain.BaseDirectory + "ROM\\cpudiag.bin", FileMode.Open, FileAccess.Read); //change to argv
-
-            romObj.Seek(0, SeekOrigin.Begin);
-            Registers registers = new();
-            registers.Pc = 0;
-
-            //Console.WriteLine();
-
-            for (int i = 0 + 0x100; i < romObj.Length + 0x100; i++)
-            {
-                registers.memory[i] = (byte)romObj.ReadByte();
-            }
-
-            //Console.WriteLine();
-
-            // Fix the first instruction to be JMP 0x100
-            registers.memory[0] = 0xc3; // OPCode for JMP
-            registers.memory[1] = 0;
-            registers.memory[2] = 0x01;
-
-            // Fix the stack pointer from 0x6ad to 0x7ad
-            // 0x06 is byte 112 in the test code, which is 112 + 0x100 = 368 in memory
-            registers.memory[368] = 0x7;
-
-            // Skip DAA Test
-            registers.memory[0x59c] = 0xc3; //JMP
-            registers.memory[0x59d] = 0xc2;
-            registers.memory[0x59e] = 0x05;
-
-            //Console.WriteLine();
-
-            while (1 == 1)
-            {
-                //Console.WriteLine();
-                this.Emulate8080Op(registers);
-
-                //Console.WriteLine();
-
-                using (System.IO.StreamWriter file = File.AppendText("C:\\Users\\felip\\Documents\\git\\SpaceInvaders8080Emulator\\ConsoleApp1\\DebugLogs\\testDebug.txt"))
-                {
-                  //  file.WriteLine(emulationLog.ToString());
-                }
-               // emulationLog.Clear();
-            }
-        }
-
-        public void ReadRom(Registers registers)
-        {
-            //FileStream romObj = new FileStream("C:\\Users\\felip\\OneDrive\\Desktop\\Emulator\\invaders\\invaders", FileMode.Open, FileAccess.Read); //change to argv
-            //Console.WriteLine("a");
-            FileStream romObj = new FileStream(AppDomain.CurrentDomain.BaseDirectory + "ROM\\invaders", FileMode.Open, FileAccess.Read); //change to argv
-
-            romObj.Seek(0, SeekOrigin.Begin);
-           // Registers registers = new(); // Move to scope of the class
-            registers.Pc = 0;
-
-
-
-            //Console.WriteLine();
-
-            for (int i = 0; i < romObj.Length; i++)
-            {
-                registers.memory[i] = (byte)romObj.ReadByte();
-            }
-
-            //Console.WriteLine();
-
-            var time = new Stopwatch();
-            double lastTimer = 0.0;
-            double nextInterruptTime = 0.0;
-            byte whichInterrupt = 1;
-            time.Start();
-
-            while (1 == 1)
-            {
-                //Console.WriteLine();
-
-                if (lastTimer == 0.0)
-                {
-                    //Console.WriteLine();
-                    lastTimer = time.Elapsed.TotalMilliseconds;
-                    nextInterruptTime = lastTimer + 16.0;
-                    whichInterrupt = 1;
-                }
-
-                //	Console.WriteLine("next interrupt: " + nextInterruptTime);
-				//Console.WriteLine("time elapsed " + time.Elapsed.TotalMilliseconds);
-				//emulationLog.Append("next interrupt: " + nextInterruptTime); emulationLog.Append("\n");
-				//emulationLog.Append("time elapsed " + time.Elapsed.TotalMilliseconds); emulationLog.Append("\n");
-
-				if (registers.Int_enable == 1 && time.Elapsed.TotalMilliseconds > nextInterruptTime)
-                {
-					//Console.WriteLine(time.Elapsed.TotalMilliseconds);
-					//emulationLog.Append("time elapsed I entered interrupt: " + time.Elapsed.TotalMilliseconds);
-					if (whichInterrupt == 1)
-                    {
-					//	emulationLog.Append(String.Format("Registers[9212] == $0x{0:X}", registers.memory[9212]));
-					//	//emulationLog.Append("\n");
-					//	emulationLog.Append(String.Format("Registers[9213] == $0x{0:X}", registers.memory[9213]));
-					//	emulationLog.Append("\n");
-					//	emulationLog.Append("Generating Interrupt 1 "); emulationLog.Append("\n");
-						//  Console.WriteLine("Generating Interrupt 1 ");
-						this.GenerateInterrupt(registers, 1); // Interrupt 1        
-                        whichInterrupt = 2;
-						//	Console.WriteLine("");
-					//	emulationLog.Append(String.Format("Registers[9212] == $0x{0:X}", registers.memory[9212]));
-					//	emulationLog.Append("\n");
-					//	emulationLog.Append(String.Format("Registers[9213] == $0x{0:X}", registers.memory[9213]));
-					//	emulationLog.Append("\n");
-					}
-                    else
-                    {
-					//	emulationLog.Append(String.Format("Registers[9212] == $0x{0:X}", registers.memory[9212]));
-						//emulationLog.Append("\n");
-					//	emulationLog.Append(String.Format("Registers[9213] == $0x{0:X}", registers.memory[9213]));
-					//	emulationLog.Append("\n");
-					//	emulationLog.Append("Generating Interrupt 2 "); emulationLog.Append("\n");
-						//Console.WriteLine();
-						//Console.WriteLine("Generating Interrupt 2 ");
-						this.GenerateInterrupt(registers, 2); // Interrupt 2, Middle of frame    
-                        whichInterrupt = 1;
-					//	emulationLog.Append(String.Format("Registers[9212] == $0x{0:X}", registers.memory[9212]));
-					//	emulationLog.Append("\n");
-					//	emulationLog.Append(String.Format("Registers[9213] == $0x{0:X}", registers.memory[9213]));
-					//	emulationLog.Append("\n");
-					}
-                    nextInterruptTime = time.Elapsed.TotalMilliseconds + 8.0;
-                }
-
-                //Console.WriteLine();
-
-                // CPU = 2Mhz = 2000000 cycle/second
-                double sinceLast = time.Elapsed.TotalMilliseconds - lastTimer;
-                int cyclesLeft = (int)(2000 * sinceLast); // Time is in miliseconds, so 2000 * time = 2MHz
-                int cycles = 0;
-				//Console.WriteLine();
-
-				
-				
-                
-
-                while (cyclesLeft > cycles)
-                {
-				//	Console.WriteLine("");
-				//	emulationLog.Append("cyclesLeft: "); emulationLog.Append(cyclesLeft.ToString()); emulationLog.Append("\n");
-				//	emulationLog.Append("Cycles: "); emulationLog.Append(cycles.ToString()); emulationLog.Append("\n");
-				//	emulationLog.Append("Timer: "); emulationLog.Append(time.Elapsed.TotalMilliseconds.ToString()); emulationLog.Append("\n");
-					// Console.WriteLine();
-					fixed (byte* opcode = &registers.memory[registers.Pc])
-                        if (registers.memory[registers.Pc] == 0xdb) // IN INSTRUCTION
-                        {
-							//emulationLog.Append("In Instruction: "); emulationLog.Append("\n");
-							byte port = (registers.memory[registers.Pc + 1]);
-                            this.MachineIn(registers, port);
-                            registers.Pc += 2;
-                            cycles += 3;
-						}
-                        else if (registers.memory[registers.Pc] == 0xd3) // OUT INSTRUCTION
-                        {
-							//emulationLog.Append("Out INSTRUCTION: "); emulationLog.Append("\n");
-							byte port = (registers.memory[registers.Pc + 1]);
-                            this.MachineOut(port, registers.A);
-                            registers.Pc += 2;
-                            cycles += 3;
-                        }
-                        else
-                        {
-							//Console.WriteLine("");
-							cycles += this.Emulate8080Op(registers);
-                       //     Console.WriteLine("");
-                        }
-                }
-
-                lastTimer = time.Elapsed.TotalMilliseconds;
-
-
-                //Console.WriteLine();
-
-                using (System.IO.StreamWriter file = File.AppendText("C:\\Users\\felip\\Documents\\git\\SpaceInvaders8080Emulator\\ConsoleApp1\\DebugLogs\\invadersDebug.txt"))
-                {
-                   // file.WriteLine(emulationLog.ToString());
-                }
-               // emulationLog.Clear();  
-            }
-            
-        }
 
         public static byte Parity(int x, int size)
         {
@@ -435,21 +346,18 @@ namespace Intel8080Emulator
                 if ((x & 0x1) == 0x1) p++;
                 x = x >> 1;
             }
-            //Console.WriteLine("");
 
             if ((p & 1) == 0)
             {
-               // Console.WriteLine("");
                 return 1;
             }
             else
             {
-               // Console.WriteLine("");
                 return 0;
             };
         }
 
-        public int Emulate8080Op(Registers registers)
+        public int Emulate8080OpInstruction(Registers registers)
         {
             fixed (byte* opcode = &registers.memory[registers.Pc])
             {
@@ -462,17 +370,14 @@ namespace Intel8080Emulator
                 UInt32 aux2;
                 int cycleCount;
 
-                //Console.WriteLine();
                 fixed (byte* codebuffer = &registers.memory[0])
                 {
-                    disassembler.Disassemble8080Op(codebuffer, registers.Pc, emulationLog);
-                    cycleCount = disassembler.InstructionSet.opDictionary[codebuffer[registers.Pc]].CycleCount;
-                }
-               // Console.WriteLine();
-              //  emulationLog.Append(String.Format("Opcode: $0x{0:X}\n", opcode[0].ToString("X2")));
-				//emulationLog.Append(String.Format("PC: $0x{0:X}\n", registers.Pc.ToString("X4")));
+					cycleCount = instructionSet.opDictionary[codebuffer[registers.Pc]].CycleCount;
+				}
+				//  emulationLog.Append(String.Format("Opcode: $0x{0:X}\n", opcode[0].ToString("X2")));
+				//  emulationLog.Append(String.Format("PC: $0x{0:X}\n", registers.Pc.ToString("X4")));
 
-				switch (*opcode) // I can implement this with a dictionary that points to a... method? (delegate)
+				switch (*opcode) 
                 {
                     case 0x00: // NOP               
                         break;
@@ -1735,14 +1640,9 @@ namespace Intel8080Emulator
                         }
                         break;
 
-                    case 0xc9:  // RET
-                      //  Console.WriteLine("i am  : " + registers.Pc.ToString());
-                        
+                    case 0xc9:  // RET                        
 						registers.Pc = (ushort)((ushort)registers.memory[registers.Sp + 1] << 8 | (ushort)registers.memory[registers.Sp]);
-						//Console.WriteLine("i am  returning to : " + registers.Pc.ToString());
-						//  Console.WriteLine("registers.memory[registers.Sp + 1] : " + ((ushort)registers.memory[registers.Sp + 1] << 8).ToString());
-						//Console.WriteLine("registers.memory[registers.Sp] : " + ((ushort)registers.memory[registers.Sp]).ToString());
-							registers.Sp += 2;
+						registers.Sp += 2;
                         break;
 
                     case 0xca: // JZ ADR
@@ -2232,7 +2132,7 @@ namespace Intel8080Emulator
 
                 }
 				registers.Pc += (ushort)1;
-				this.ProcessorState(registers);
+				//this.ProcessorState(registers);
                 return cycleCount;
             }
         }
