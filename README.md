@@ -31,3 +31,6 @@ The Computer Archeology page for Space Invaders (arcade) was also immensely help
 Other publicly available Space Invaders emulators on the Internet also helped me to compare my code against and see what I was missing to make it work.
 
 And, of course, credits to Taito and Tomohiro Nishikado, for creating the original game in 1978.
+
+
+Author: Felipe Dotti.
