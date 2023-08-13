@@ -68,7 +68,7 @@ void ThreadMethod2() // SDL
     CleanUp();
 	const int WIDTH = 224;
 	const int HEIGHT = 256;
-	const int SCALE = 3;
+	const int SCALE = 2;
 	const int VRAM_OFFSET = 9216;
 	const int WIDTH_PIXELS = WIDTH * 32; 
 
