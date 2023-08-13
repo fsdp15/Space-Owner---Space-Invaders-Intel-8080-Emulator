@@ -5,13 +5,20 @@ Hello!
 This is a Space Invaders emulator made in C#, called Space Owner. The aim of this emulator is to run the ROM for the original 1978 game made for the Intel 8080 arcade machine. 
 
 To run it, just browse the "Space Owner Executable" folder and double-click on Space Owner Emulator.exe.
+
 Note: you need to have .NET 6.0 or higher installed (https://dotnet.microsoft.com/en-us/download).
 
 The controls are keyboard only. Below are the key bindings:
+
+
 1 – Insert Credit
+
 Enter (return) – Start
+
 Key Arrows – Move Ship
+
 D - Fire
+
 
 For the CPU emulation, I followed this great guide provided by Emulator 101: http://emulator101.com/.
 
