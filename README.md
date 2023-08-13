@@ -26,7 +26,7 @@ For the video rendering, I have decided to use the SDL2 bindings for C#: https:/
 
 The audio is not emulated. The emulator plays .wav files as the game demands. The .wav files were obtained here: http://www.classicgaming.cc/classics/space-invaders/sounds.
 
-The Computer Archeology page for Space Invaders (arcade) was also immensely helpful for understanding the Space Invaders hardware and checking the correct code execution of the game.
+The Computer Archeology page for Space Invaders (arcade) was also immensely helpful for understanding the Space Invaders hardware and checking the correct code execution of the game: http://computerarcheology.com/Arcade/SpaceInvaders/
 
 Other publicly available Space Invaders emulators on the Internet also helped me to compare my code against and see what I was missing to make it work.
 
