@@ -17,34 +17,34 @@ using System.Media;
 const int FPS = 60; // Limiting SDL to 60 FPS. The CPU fills VRAM at 60 fps.
 const int frameDelay = 1000 / FPS;
 
-Thread.Sleep(3000);
-
 Intel8080Emulator.Intel8080Emulator intel8080Emulator = new();
 Thread newThread1 = new Thread(new ThreadStart(ThreadMethod1)); // CPU
 Thread newThread2 = new Thread(new ThreadStart(ThreadMethod2)); // Video and Inputs
-Thread newThread3 = new Thread(new ThreadStart(ThreadMethod3)); // Sound
 
 newThread1.IsBackground = true;
-newThread3.IsBackground = true;
 
 newThread1.Start();
 newThread2.Start();
-newThread3.Start();
+
 
 void ThreadMethod1() {
 	//intel8080Emulator.ReadTestRom(); // For CPU testing if needed
 	intel8080Emulator.ReadRom(intel8080Emulator.registers);
+
 	intel8080Emulator.DoEmulation(intel8080Emulator.registers);
 }
 
 void ThreadMethod2() // SDL
 {
-
-    IntPtr window;
+	IntPtr window;
     IntPtr renderer;
     bool running = true;
 
     Setup();
+
+	Thread newThread3 = new Thread(new ThreadStart(ThreadMethod3)); // Sound
+	newThread3.IsBackground = true;
+	newThread3.Start();
 
 	var time = new Stopwatch();
 	time.Start();
@@ -264,6 +264,7 @@ void ThreadMethod2() // SDL
 
 void ThreadMethod3() // Play audio .wav files whenever the game indicates to do so. Future improvement: listen to events to play sound instead of an infinite loop (less CPU usage)
 {
+
 	byte lastOutPort3 = new byte();
 	byte lastOutPort5 = new byte();
 	#pragma warning disable CA1416 // Validate platform compatibility

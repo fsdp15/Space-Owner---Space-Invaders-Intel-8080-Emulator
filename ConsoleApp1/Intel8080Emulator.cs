@@ -103,82 +103,88 @@ namespace Intel8080Emulator
 			double lastTimer = 0.0;
 			double nextInterruptTime = 0.0;
 			byte whichInterrupt = MIDDLE_SCREEN_INTERRUPT;
-
 			time.Start();
 
-			while (true)
-			{
+            try
+            {
+                while (true)
+                {
 
-				if (lastTimer == 0.0)
-				{
-					lastTimer = time.Elapsed.TotalMilliseconds;
-					nextInterruptTime = lastTimer + DRAW_NEXT_FRAME_TIME * 2;
-					whichInterrupt = MIDDLE_SCREEN_INTERRUPT;
-				}
+                    if (lastTimer == 0.0)
+                    {
+                        lastTimer = time.Elapsed.TotalMilliseconds;
+                        nextInterruptTime = lastTimer + DRAW_NEXT_FRAME_TIME * 2;
+                        whichInterrupt = MIDDLE_SCREEN_INTERRUPT;
+                    }
 
-				if (registers.Int_enable == INTERRUPT_ENABLED && time.Elapsed.TotalMilliseconds > nextInterruptTime)
-				{
-					if (whichInterrupt == MIDDLE_SCREEN_INTERRUPT)
-					{
-						//	emulationLog.Append("Generating Interrupt 1 "); emulationLog.Append("\n");
-						this.GenerateInterrupt(registers, MIDDLE_SCREEN_INTERRUPT); // Interrupt 1        
-						whichInterrupt = END_SCREEN_INTERRUPT;
-					}
-					else
-					{
-						//	emulationLog.Append("Generating Interrupt 2 "); emulationLog.Append("\n");
-						this.GenerateInterrupt(registers, END_SCREEN_INTERRUPT); // Interrupt 2, Middle of frame    
-						whichInterrupt = MIDDLE_SCREEN_INTERRUPT;
-					}
-					nextInterruptTime = time.Elapsed.TotalMilliseconds + DRAW_NEXT_FRAME_TIME;
-				}
+                    if (registers.Int_enable == INTERRUPT_ENABLED && time.Elapsed.TotalMilliseconds > nextInterruptTime)
+                    {
+                        if (whichInterrupt == MIDDLE_SCREEN_INTERRUPT)
+                        {
+                            //	emulationLog.Append("Generating Interrupt 1 "); emulationLog.Append("\n");
+                            this.GenerateInterrupt(registers, MIDDLE_SCREEN_INTERRUPT); // Interrupt 1        
+                            whichInterrupt = END_SCREEN_INTERRUPT;
+                        }
+                        else
+                        {
+                            //	emulationLog.Append("Generating Interrupt 2 "); emulationLog.Append("\n");
+                            this.GenerateInterrupt(registers, END_SCREEN_INTERRUPT); // Interrupt 2, Middle of frame    
+                            whichInterrupt = MIDDLE_SCREEN_INTERRUPT;
+                        }
+                        nextInterruptTime = time.Elapsed.TotalMilliseconds + DRAW_NEXT_FRAME_TIME;
+                    }
 
-				// CPU = 2Mhz = 2000000 cycle/second
-				double sinceLast = time.Elapsed.TotalMilliseconds - lastTimer;
-				if (sinceLast < DRAW_NEXT_FRAME_TIME)
-				{
-					Thread.Sleep((int)(time.Elapsed.TotalMilliseconds - lastTimer));
-				} 
-				sinceLast = time.Elapsed.TotalMilliseconds - lastTimer;
-				int cyclesLeft = (int)(CLOCK_SPEED * sinceLast); 
-				int cycles = 0;
+                    // CPU = 2Mhz = 2000000 cycle/second
+                    double sinceLast = time.Elapsed.TotalMilliseconds - lastTimer;
+                    if (sinceLast < DRAW_NEXT_FRAME_TIME)
+                    {
+                        Thread.Sleep((int)(time.Elapsed.TotalMilliseconds - lastTimer));
+                    }
+                    sinceLast = time.Elapsed.TotalMilliseconds - lastTimer;
+                    int cyclesLeft = (int)(CLOCK_SPEED * sinceLast);
+                    int cycles = 0;
 
-				while (cyclesLeft > cycles)
-				{
-					//	emulationLog.Append("cyclesLeft: "); emulationLog.Append(cyclesLeft.ToString()); emulationLog.Append("\n");
-					//	emulationLog.Append("Cycles: "); emulationLog.Append(cycles.ToString()); emulationLog.Append("\n");
-					//	emulationLog.Append("Timer: "); emulationLog.Append(time.Elapsed.TotalMilliseconds.ToString()); emulationLog.Append("\n");
-					fixed (byte* opcode = &registers.memory[registers.Pc])
-						if (registers.memory[registers.Pc] == 0xdb) // IN INSTRUCTION
-						{
-							//emulationLog.Append("In Instruction: "); emulationLog.Append("\n");
-							byte port = (registers.memory[registers.Pc + 1]);
-							this.MachineIn(registers, port);
-							registers.Pc += 2;
-							cycles += 3;
-						}
-						else if (registers.memory[registers.Pc] == 0xd3) // OUT INSTRUCTION
-						{
-							//emulationLog.Append("Out INSTRUCTION: "); emulationLog.Append("\n");
-							byte port = (registers.memory[registers.Pc + 1]);
-							this.MachineOut(port, registers.A);
-							registers.Pc += 2;
-							cycles += 3;
-						}
-						else
-						{
-							cycles += this.Emulate8080OpInstruction(registers);
-						}
-				}
-             
-				lastTimer = time.Elapsed.TotalMilliseconds;
+                    while (cyclesLeft > cycles)
+                    {
+                        //	emulationLog.Append("cyclesLeft: "); emulationLog.Append(cyclesLeft.ToString()); emulationLog.Append("\n");
+                        //	emulationLog.Append("Cycles: "); emulationLog.Append(cycles.ToString()); emulationLog.Append("\n");
+                        //	emulationLog.Append("Timer: "); emulationLog.Append(time.Elapsed.TotalMilliseconds.ToString()); emulationLog.Append("\n");
+                        fixed (byte* opcode = &registers.memory[registers.Pc])
+                            if (registers.memory[registers.Pc] == 0xdb) // IN INSTRUCTION
+                            {
+                                //emulationLog.Append("In Instruction: "); emulationLog.Append("\n");
+                                byte port = (registers.memory[registers.Pc + 1]);
+                                this.MachineIn(registers, port);
+                                registers.Pc += 2;
+                                cycles += 3;
+                            }
+                            else if (registers.memory[registers.Pc] == 0xd3) // OUT INSTRUCTION
+                            {
+                                //emulationLog.Append("Out INSTRUCTION: "); emulationLog.Append("\n");
+                                byte port = (registers.memory[registers.Pc + 1]);
+                                this.MachineOut(port, registers.A);
+                                registers.Pc += 2;
+                                cycles += 3;
+                            }
+                            else
+                            {
+                                cycles += this.Emulate8080OpInstruction(registers);
+                            }
+                    }
+
+                    lastTimer = time.Elapsed.TotalMilliseconds;
 
 
-				// using (System.IO.StreamWriter file = File.AppendText(AppDomain.CurrentDomain.BaseDirectory + "DebugLogs\\invadersDebug.txt"))
-				//{
-				//file.WriteLine(emulationLog.ToString());
-				//} 
-				//emulationLog.Clear();  
+                    // using (System.IO.StreamWriter file = File.AppendText(AppDomain.CurrentDomain.BaseDirectory + "DebugLogs\\invadersDebug.txt"))
+                    //{
+                    //file.WriteLine(emulationLog.ToString());
+                    //} 
+                    //emulationLog.Clear();  
+                }
+            }
+            catch (IndexOutOfRangeException e)
+            {
+                this.DoEmulation(registers);
 			}
 
 		}
