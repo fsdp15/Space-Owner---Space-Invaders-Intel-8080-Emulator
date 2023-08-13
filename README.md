@@ -2,7 +2,7 @@
 
 Hello!
 
-This is a Space Invaders emulator made in C#, called Space Owner. The aim of this emulator is to run the ROM for the original 1978 game made for the Intel 8080 arcade machine. 
+This is a Space Invaders emulator made in C#, called Space Owner. The aim of this emulator is to run the ROM for the original 1978 game made for the Intel 8080 arcade machine and learn more about emulation.
 
 To run it, just browse the "Space Owner Executable" folder and double-click on Space Owner Emulator.exe.
 
