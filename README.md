@@ -1,4 +1,10 @@
-# SpaceInvaders8080Emulator
+# Space Owner
+
+## Version history
+
+Version|Date|Author|Comments
+-------|----|----|--------
+1.0|Augustu 13th, 2023|Felipe Dotti|Initial release
 
 ## Summary
 
@@ -8,7 +14,7 @@ This is a Space Invaders emulator made in C#, called Space Owner. The aim of thi
 
 ## Minimal Path to Awesome
 
-To run it, just browse the "Space Owner Executable" folder and double-click on Space Owner Emulator.exe. The ROM is already included.
+To run it, just browse the ConsoleApp1/"Space Owner Executable" folder and double-click on Space Owner Emulator.exe. The ROM is already included.
 
 ![Tab Personal SSO QuickstartGif](GitAssets/SpaceOwner.gif)  
 
@@ -26,24 +32,33 @@ To run it, just browse the "Space Owner Executable" folder and double-click on S
   dotnet --version
   ```
 
-## Version history
+## Structure
 
-Version|Date|Author|Comments
--------|----|----|--------
-1.0|Augustu 13th, 2023|Felipe Dotti|Initial release
+- ConsoleApp1/ contains the emulator's source code.
+- ConsoleApp1/"Space Owner Executable" contains the emulator already compiled to be run into a Windows machine.
 
 ## Controls
 
 The controls are keyboard only. Below are the key bindings:
 
 
-1 – Insert Credit
+- 1 – Insert Credit
 
-Enter (return) – Start
+- Enter (return) – Start
 
-Key Arrows – Move Ship
+- Key Arrows – Move Ship
 
-D - Fire
+- D - Fire
+
+## Testing
+
+For testing the CPU, I have used the cpudiag.asm ROM: http://www.emulator101.com/full-8080-emulation.html.
+
+For testing the game itself, the below resources were useful to check the code's execution:
+
+- https://8080.cakers.io/
+- https://www.pcjs.org/machines/arcade/invaders/
+- http://computerarcheology.com/Arcade/SpaceInvaders/
 
 ## Credits
 
