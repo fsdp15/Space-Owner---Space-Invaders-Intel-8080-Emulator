@@ -4,7 +4,7 @@
 
 Version|Date|Author|Comments
 -------|----|----|--------
-1.0|Augustu 13th, 2023|Felipe Dotti|Initial release
+1.0|August 13th, 2023|Felipe Dotti|Initial release
 
 ## Summary
 
@@ -59,6 +59,8 @@ For testing the game itself, the below resources were useful to check the code's
 - https://8080.cakers.io/
 - https://www.pcjs.org/machines/arcade/invaders/
 - http://computerarcheology.com/Arcade/SpaceInvaders/
+
+The emulator has a debug printing function and a dissembler printing function. They both are commented to not interfere with the performance but can be used if needed.
 
 ## Credits
 
