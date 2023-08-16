@@ -136,10 +136,7 @@ namespace Intel8080Emulator
 
                     // CPU = 2Mhz = 2000000 cycle/second
                     double sinceLast = time.Elapsed.TotalMilliseconds - lastTimer;
-                    if (sinceLast < DRAW_NEXT_FRAME_TIME)
-                    {
-                        Thread.Sleep((int)(time.Elapsed.TotalMilliseconds - lastTimer));
-                    }
+                    Thread.Sleep(0); // Hack function to make C# force sync with the actual CPU running the game
                     sinceLast = time.Elapsed.TotalMilliseconds - lastTimer;
                     int cyclesLeft = (int)(CLOCK_SPEED * sinceLast);
                     int cycles = 0;
@@ -184,7 +181,8 @@ namespace Intel8080Emulator
             }
             catch (IndexOutOfRangeException e)
             {
-                this.DoEmulation(registers);
+                this.DoEmulation(registers); // Sometimes the emulator just throw an out of bounds error right in the beginning of this while true loop (?).
+                                             // Catching and retrying works. I did not debug it enough to discover the real cause. But it's probably related to optimization (it only happens in the Release version) done by C# and timing.
 			}
 
 		}
