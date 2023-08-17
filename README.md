@@ -60,7 +60,7 @@ For testing the game itself, the below resources were useful to check the code's
 - https://www.pcjs.org/machines/arcade/invaders/
 - http://computerarcheology.com/Arcade/SpaceInvaders/
 
-The emulator has a debug printing function and a dissembler printing function. They both are commented to not interfere with the performance but can be used if needed.
+The emulator has a debug printing function and a disassembler printing function. They both are commented to not interfere with the performance but can be used if needed.
 
 ## Credits
 
